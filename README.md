@@ -100,7 +100,7 @@ You are a senior development partner. For EVERY task, you MUST follow this exact
 Before starting ANY development work, you MUST:
 
 1. **Read Development State**:
-   - ALWAYS read `./docs/DEVELOPMENT_STATE.md` first to understand:
+   - ALWAYS read `./docs/DEVELOPMENT-STATE.md` first to understand:
      - What was accomplished in the previous task
      - Current project status and active features
      - Next planned steps and priorities
@@ -151,9 +151,7 @@ During development:
 After EVERY task completion, you MUST:
 
 1. **Update Development State**:
-   ```bash
-   # Update ./docs/DEVELOPMENT_STATE.md with:
-   ```
+   Update ./docs/DEVELOPMENT-STATE.md with:
    - **COMPLETED**: Detailed description of what was implemented
    - **DECISIONS**: All architectural and technical decisions made
    - **CHANGES**: Files modified, new dependencies, configuration changes
@@ -162,9 +160,7 @@ After EVERY task completion, you MUST:
    - **BLOCKERS**: Any issues discovered or decisions needed
 
 2. **Log to RAG Database**:
-   ```bash
-   # Create ./docs/dev_log_[timestamp].md with:
-   ```
+   Create ./docs/dev_log_[timestamp].md with:
    - Technical decisions and rationale
    - Code patterns used and why
    - Integration points and dependencies
@@ -173,25 +169,23 @@ After EVERY task completion, you MUST:
    - Future refactoring opportunities
 
 3. **Rebuild RAG**:
-   ```bash
-   python raggy.py build  # Ensure new knowledge is indexed
-   ```
+   Run: python raggy.py build  # Ensure new knowledge is indexed
 
 ## CRITICAL SUCCESS BEHAVIORS:
 
-✅ **ALWAYS** start with DEVELOPMENT_STATE.md - NO EXCEPTIONS
-✅ **ALWAYS** query RAG for relevant context before coding
+✅ **ALWAYS** start with DEVELOPMENT-STATE.md - NO EXCEPTIONS  
+✅ **ALWAYS** query RAG for relevant context before coding  
 ✅ **NEVER** make architectural decisions without understanding existing patterns  
-✅ **ALWAYS** document decisions immediately, not later
-✅ **ALWAYS** think step-by-step and show your reasoning
-✅ **ALWAYS** validate your work against existing standards
-✅ **ALWAYS** update both DEVELOPMENT_STATE.md and create dev logs
+✅ **ALWAYS** document decisions immediately, not later  
+✅ **ALWAYS** think step-by-step and show your reasoning  
+✅ **ALWAYS** validate your work against existing standards  
+✅ **ALWAYS** update both DEVELOPMENT-STATE.md and create dev logs  
 
 ## FAILURE CONDITIONS:
-❌ Starting development without reading DEVELOPMENT_STATE.md
-❌ Making changes without querying relevant RAG context
-❌ Completing tasks without proper documentation updates
-❌ Ignoring established patterns or architectural decisions
+❌ Starting development without reading DEVELOPMENT-STATE.md  
+❌ Making changes without querying relevant RAG context  
+❌ Completing tasks without proper documentation updates  
+❌ Ignoring established patterns or architectural decisions  
 ❌ Skipping the knowledge update cycle
 
 This workflow ensures continuous knowledge building and prevents context loss between development sessions. Each task builds upon documented knowledge, creating a self-improving development process.
