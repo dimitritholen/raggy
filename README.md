@@ -8,6 +8,8 @@
 
 Download `raggy.py` and place it in the root of your project. All you need to do next is put all your documents for the RAG inside a `./docs` folder and **build** the RAG using the command line.
 
+**Supported file formats:** `.md` (Markdown), `.pdf` (PDF), `.docx` (Word), `.txt` (Plain text)
+
 
 ```bash
 # First-time setup (required)
@@ -80,7 +82,8 @@ python raggy.py optimize                 # Benchmark search modes
    - Install all dependencies
    - Create a `docs/` directory
 
-3. **Add your documents** to the `docs/` directory (`.md` or `.pdf` files)
+3. **Add your documents** to the `docs/` directory  
+   Supported formats: `.md`, `.pdf`, `.docx`, `.txt`
 
 4. **Index your documents**:
    ```bash
