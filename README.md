@@ -63,6 +63,30 @@ python raggy.py optimize                 # Benchmark search modes
 - **Query Expansion**: Automatic synonym expansion for domain terms
 - **Model Presets**: fast/balanced/multilingual/accurate options
 - **Universal**: Works with any project's documentation
+- **💰 Completely Free**: No API costs - everything runs locally on your machine
+
+## Why Raggy is Fun & Cheap
+
+**🆓 Zero Cost Forever**
+- No API tokens, no monthly fees, no usage limits
+- Run unlimited searches on unlimited documents
+- Perfect for developers, students, and cost-conscious teams
+
+**🏠 100% Local & Private**
+- Your documents never leave your machine
+- No internet required after initial setup
+- No rate limits or API downtime
+- Full control over your data and processing
+
+**⚡ Blazing Fast**
+- Local search = instant results
+- No network latency or API delays
+- Process thousands of documents without breaking the bank
+
+**vs. Cloud RAG Services:**
+- Cloud RAG: $$/year for typical usage
+- Raggy: $0/year forever
+- That's ∞% savings! 🎉
 
 ## Requirements
 
