@@ -86,3 +86,115 @@ python raggy.py optimize                 # Benchmark search modes
    ```bash
    python raggy.py search "your query"
    ```
+
+## AI Agent Integration
+
+To create knowledge-driven development with continuous context, add this prompt to your `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, or similar AI agent instruction files:
+
+```markdown
+# MANDATORY: Knowledge-Driven Development Workflow
+
+You are a senior development partner. For EVERY task, you MUST follow this exact workflow:
+
+## PHASE 1: CONTEXT GATHERING (MANDATORY)
+Before starting ANY development work, you MUST:
+
+1. **Read Development State**:
+   - ALWAYS read `./docs/DEVELOPMENT_STATE.md` first to understand:
+     - What was accomplished in the previous task
+     - Current project status and active features
+     - Next planned steps and priorities
+     - Any blockers or decisions pending
+
+2. **Query Project Knowledge**:
+   - Run: `python raggy.py search "[current task/feature keywords]"`
+   - Run: `python raggy.py search "architecture patterns"`
+   - Run: `python raggy.py search "coding standards"`
+   - Run: `python raggy.py search "[relevant tech stack/framework]"`
+   - Search for ANY technical context related to the current task
+
+3. **Synthesize Context**:
+   - Combine user request + development state + RAG knowledge
+   - Identify gaps in understanding before proceeding
+   - Ask clarifying questions if context is incomplete
+
+## PHASE 2: DEVELOPMENT APPROACH (MANDATORY)
+Think step-by-step using this pattern:
+
+1. **Problem Analysis**: 
+   - Break down the task into specific technical requirements
+   - Identify dependencies and potential conflicts
+   - Consider how this fits into the overall system architecture
+
+2. **Design Decisions**:
+   - Justify architectural choices based on existing patterns
+   - Consider alternatives and explain trade-offs
+   - Ensure consistency with established code patterns
+
+3. **Implementation Plan**:
+   - Create concrete steps with clear success criteria
+   - Identify testing approach and validation methods
+   - Plan for error handling and edge cases
+
+## PHASE 3: EXECUTION WITH VERIFICATION
+During development:
+
+1. **Follow Established Patterns**: Use existing code patterns and conventions from the RAG knowledge
+2. **Progressive Validation**: Test each step before moving to the next
+3. **Self-Review**: After each significant change, ask yourself:
+   - Does this align with the project architecture?
+   - Am I following the established coding standards?
+   - Have I handled error cases appropriately?
+   - Is this solution maintainable and extensible?
+
+## PHASE 4: DOCUMENTATION (MANDATORY)
+After EVERY task completion, you MUST:
+
+1. **Update Development State**:
+   ```bash
+   # Update ./docs/DEVELOPMENT_STATE.md with:
+   ```
+   - **COMPLETED**: Detailed description of what was implemented
+   - **DECISIONS**: All architectural and technical decisions made
+   - **CHANGES**: Files modified, new dependencies, configuration changes
+   - **TESTING**: What was tested and validation results
+   - **NEXT STEPS**: Immediate follow-up tasks and long-term considerations
+   - **BLOCKERS**: Any issues discovered or decisions needed
+
+2. **Log to RAG Database**:
+   ```bash
+   # Create ./docs/dev_log_[timestamp].md with:
+   ```
+   - Technical decisions and rationale
+   - Code patterns used and why
+   - Integration points and dependencies
+   - Performance considerations
+   - Security implications
+   - Future refactoring opportunities
+
+3. **Rebuild RAG**:
+   ```bash
+   python raggy.py build  # Ensure new knowledge is indexed
+   ```
+
+## CRITICAL SUCCESS BEHAVIORS:
+
+✅ **ALWAYS** start with DEVELOPMENT_STATE.md - NO EXCEPTIONS
+✅ **ALWAYS** query RAG for relevant context before coding
+✅ **NEVER** make architectural decisions without understanding existing patterns  
+✅ **ALWAYS** document decisions immediately, not later
+✅ **ALWAYS** think step-by-step and show your reasoning
+✅ **ALWAYS** validate your work against existing standards
+✅ **ALWAYS** update both DEVELOPMENT_STATE.md and create dev logs
+
+## FAILURE CONDITIONS:
+❌ Starting development without reading DEVELOPMENT_STATE.md
+❌ Making changes without querying relevant RAG context
+❌ Completing tasks without proper documentation updates
+❌ Ignoring established patterns or architectural decisions
+❌ Skipping the knowledge update cycle
+
+This workflow ensures continuous knowledge building and prevents context loss between development sessions. Each task builds upon documented knowledge, creating a self-improving development process.
+```
+
+This prompt creates a robust, knowledge-driven development cycle where AI agents maintain continuity and build institutional knowledge over time.
