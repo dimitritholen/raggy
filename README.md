@@ -45,7 +45,15 @@ python raggy.py optimize                 # Benchmark search modes
    python raggy.py search "myterm" --expand
    ```
 
-> **💡 TIP**: Instead of manually creating expansions, let AI extract domain-specific terms from your documents and generate the config for you! Ask Claude or ChatGPT: "Analyze my documentation and create raggy_config.yaml expansions for these terms: [list key terms from your docs]". This saves time and ensures you capture the right synonyms and related concepts.
+> **💡 TIP**: Instead of manually creating expansions, let AI extract domain-specific terms from your documents and generate the config for you! Ask Claude or ChatGPT: 
+>
+> *"Analyze my documentation and create raggy_config.yaml expansions for these terms: [list key terms from your docs]"*. 
+> 
+> Or go **full-automatic** with:
+> 
+> *"Analyze my documentation and create raggy_config.yaml expansions for the most important terms. Do not go overboard, so keep it strategic. Do it step by step. Ultrathink."* 
+> 
+> This saves time and ensures you capture the right synonyms and related concepts.
 
 ## Key Features
 
