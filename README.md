@@ -2,7 +2,7 @@
 
 ![raggy](raggy.png)
 
-**Single file drop-in** RAG setup (ChromaDB) with hybrid search, smart chunking, and normalized scoring.
+**Single file** RAG (ChromaDB) with hybrid search, smart chunking, and normalized scoring. 
 
 ## Quick Start
 
