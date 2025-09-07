@@ -2,9 +2,12 @@
 
 ![raggy](raggy.png)
 
-Enhanced ChromaDB RAG setup with hybrid search, smart chunking, and normalized scoring.
+**Single file drop-in** RAG setup (ChromaDB) with hybrid search, smart chunking, and normalized scoring.
 
 ## Quick Start
+
+Download `raggy.py` and place it in the root of your project. All you need to do next is put all your documents for the RAG inside a `./docs` folder and **build** the RAG using the command line.
+
 
 ```bash
 # First-time setup (required)
