@@ -5,6 +5,9 @@ Enhanced ChromaDB RAG setup with hybrid search, smart chunking, and normalized s
 ## Quick Start
 
 ```bash
+# First-time setup (required)
+python raggy.py init                     # Initialize environment and install dependencies
+
 # Basic usage
 python raggy.py build                    # Index your docs
 python raggy.py search "your query"      # Search with normalized scores
@@ -47,7 +50,37 @@ python raggy.py optimize                 # Benchmark search modes
 ## Requirements
 
 - Python 3.8+
-- `uv` package manager (auto-installed)
-- Documents in `./docs/` directory (markdown or PDF)
+- `uv` package manager ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
 
-The system automatically installs dependencies using `uv` on first run.
+## Setup
+
+1. **Install uv** (if not already installed):
+   ```bash
+   # On macOS/Linux:
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   
+   # On Windows:
+   # Download and run installer from https://astral.sh/uv/getting-started/installation/
+   ```
+
+2. **Initialize the project**:
+   ```bash
+   python raggy.py init
+   ```
+   This will:
+   - Create a virtual environment (`.venv`)
+   - Generate `pyproject.toml`
+   - Install all dependencies
+   - Create a `docs/` directory
+
+3. **Add your documents** to the `docs/` directory (`.md` or `.pdf` files)
+
+4. **Index your documents**:
+   ```bash
+   python raggy.py build
+   ```
+
+5. **Start searching**:
+   ```bash
+   python raggy.py search "your query"
+   ```

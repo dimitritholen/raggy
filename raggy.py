@@ -381,9 +381,156 @@ def check_uv_available():
         return False
 
 
+def check_environment_setup():
+    """Check if project environment is properly set up"""
+    venv_path = Path(".venv")
+    pyproject_path = Path("pyproject.toml")
+    
+    if not venv_path.exists():
+        return False, "virtual_environment"
+    
+    if not pyproject_path.exists():
+        return False, "pyproject"
+    
+    # Check if virtual environment is activated or can be used
+    try:
+        # Check if we can run python in the venv
+        if sys.platform == "win32":
+            python_exe = venv_path / "Scripts" / "python.exe"
+        else:
+            python_exe = venv_path / "bin" / "python"
+        
+        if not python_exe.exists():
+            return False, "invalid_venv"
+    except:
+        return False, "invalid_venv"
+    
+    return True, "ok"
+
+
+def setup_environment(quiet: bool = False):
+    """Set up the project environment from scratch"""
+    if not quiet:
+        print("🚀 Setting up raggy environment...")
+    
+    # Check if uv is available
+    if not check_uv_available():
+        return False
+    
+    # Create virtual environment
+    venv_path = Path(".venv")
+    if not venv_path.exists():
+        if not quiet:
+            print("Creating virtual environment...")
+        try:
+            subprocess.check_call(["uv", "venv"], stdout=subprocess.DEVNULL if quiet else None)
+        except subprocess.CalledProcessError as e:
+            print(f"ERROR: Failed to create virtual environment: {e}")
+            return False
+    
+    # Create minimal pyproject.toml if it doesn't exist
+    pyproject_path = Path("pyproject.toml")
+    if not pyproject_path.exists():
+        if not quiet:
+            print("Creating pyproject.toml...")
+        
+        pyproject_content = """[project]
+name = "raggy-project"
+version = "0.1.0"
+description = "RAG project using Universal ChromaDB RAG System"
+requires-python = ">=3.8"
+dependencies = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "PyPDF2>=3.0.0",
+]
+
+[project.optional-dependencies]
+magic-win = ["python-magic-bin>=0.4.14"]
+magic-unix = ["python-magic"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+"""
+        
+        try:
+            with open(pyproject_path, "w", encoding="utf-8") as f:
+                f.write(pyproject_content)
+        except Exception as e:
+            print(f"ERROR: Failed to create pyproject.toml: {e}")
+            return False
+    
+    # Install dependencies
+    if not quiet:
+        print("Installing dependencies...")
+    
+    try:
+        # Install base dependencies
+        subprocess.check_call([
+            "uv", "pip", "install", 
+            "chromadb>=0.4.0", 
+            "sentence-transformers>=2.2.0", 
+            "PyPDF2>=3.0.0"
+        ], stdout=subprocess.DEVNULL if quiet else None)
+        
+        # Install platform-specific magic library
+        if sys.platform == "win32":
+            try:
+                subprocess.check_call([
+                    "uv", "pip", "install", "python-magic-bin>=0.4.14"
+                ], stdout=subprocess.DEVNULL if quiet else None)
+            except subprocess.CalledProcessError:
+                if not quiet:
+                    print("Warning: Could not install python-magic-bin. File type detection may be limited.")
+        else:
+            try:
+                subprocess.check_call([
+                    "uv", "pip", "install", "python-magic"
+                ], stdout=subprocess.DEVNULL if quiet else None)
+            except subprocess.CalledProcessError:
+                if not quiet:
+                    print("Warning: Could not install python-magic. File type detection may be limited.")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: Failed to install dependencies: {e}")
+        print("You can try installing manually with: uv pip install chromadb sentence-transformers PyPDF2")
+        return False
+    
+    # Create docs directory if it doesn't exist
+    docs_path = Path("docs")
+    if not docs_path.exists():
+        docs_path.mkdir()
+        if not quiet:
+            print("Created docs/ directory - add your .md or .pdf files here")
+    
+    if not quiet:
+        print("✅ Environment setup complete!")
+        print("\nNext steps:")
+        print("1. Add your documentation files to the docs/ directory")
+        print("2. Run: python raggy.py build")
+        print("3. Run: python raggy.py search \"your query\"")
+    
+    return True
+
+
 def install_if_missing(packages: List[str], skip_cache: bool = False):
     """Auto-install required packages if missing using uv"""
     if not check_uv_available():
+        sys.exit(1)
+
+    # Check if environment is set up properly
+    env_ok, env_issue = check_environment_setup()
+    if not env_ok:
+        if env_issue == "virtual_environment":
+            print("ERROR: No virtual environment found.")
+            print("Run 'python raggy.py init' to set up the project environment.")
+        elif env_issue == "pyproject":
+            print("ERROR: No pyproject.toml found.")
+            print("Run 'python raggy.py init' to set up the project environment.")
+        elif env_issue == "invalid_venv":
+            print("ERROR: Invalid virtual environment found.")
+            print("Delete .venv directory and run 'python raggy.py init' to recreate it.")
         sys.exit(1)
 
     # Load cache unless skipped
@@ -421,37 +568,23 @@ def install_if_missing(packages: List[str], skip_cache: bool = False):
         except ImportError:
             print(f"Installing {package_name}...")
             try:
-                # Use uv for package installation
-                subprocess.check_call(["uv", "add", package_spec])
+                # Use uv pip install with the virtual environment
+                subprocess.check_call(["uv", "pip", "install", package_spec])
                 # Cache successful installation
                 if "installed" not in cache:
                     cache["installed"] = {}
                 cache["installed"][package_name] = time.time()
                 cache_updated = True
             except subprocess.CalledProcessError as e:
-                print(f"Failed to install {package_name} with uv add: {e}")
-                # Fallback to uv pip install
-                try:
-                    subprocess.check_call(["uv", "pip", "install", package_spec])
-                    # Cache successful installation
-                    if "installed" not in cache:
-                        cache["installed"] = {}
-                    cache["installed"][package_name] = time.time()
-                    cache_updated = True
-                except subprocess.CalledProcessError as e2:
-                    print(f"Failed to install {package_name} with uv pip: {e2}")
-                    if package_name == "python-magic-bin":
-                        print("Trying alternative magic package...")
-                        try:
-                            subprocess.check_call(
-                                ["uv", "pip", "install", "python-magic"]
-                            )
-                            cache["installed"][package_name] = time.time()
-                            cache_updated = True
-                        except:
-                            print(
-                                "Warning: Could not install python-magic. File type detection may be limited."
-                            )
+                print(f"Failed to install {package_name}: {e}")
+                if package_name == "python-magic-bin":
+                    print("Trying alternative magic package...")
+                    try:
+                        subprocess.check_call(["uv", "pip", "install", "python-magic"])
+                        cache["installed"][package_name] = time.time()
+                        cache_updated = True
+                    except:
+                        print("Warning: Could not install python-magic. File type detection may be limited.")
 
     # Save updated cache
     if cache_updated:
@@ -460,6 +593,24 @@ def install_if_missing(packages: List[str], skip_cache: bool = False):
 
 def setup_dependencies(skip_cache: bool = False, quiet: bool = False):
     """Setup dependencies with optional caching"""
+    
+    # Check if we're in a virtual environment and switch to it if needed
+    env_ok, env_issue = check_environment_setup()
+    if env_ok:
+        # Ensure we're using the virtual environment's Python
+        venv_path = Path(".venv")
+        if sys.platform == "win32":
+            venv_python = venv_path / "Scripts" / "python.exe"
+        else:
+            venv_python = venv_path / "bin" / "python"
+        
+        # If we're not already running in the venv, restart with venv python
+        if str(venv_python.resolve()) != str(Path(sys.executable).resolve()):
+            if not quiet:
+                print("Switching to virtual environment...")
+            # Re-run the current command with the venv python
+            os.execv(str(venv_python), [str(venv_python)] + sys.argv)
+    
     required_packages = [
         "chromadb>=0.4.0",
         "sentence-transformers>=2.2.0",
@@ -830,7 +981,9 @@ class UniversalRAG:
         # Find documents
         files = self._find_documents()
         if not files:
-            print("No documents found. Add .md or .pdf files to ./docs/")
+            print("ERROR: No documents found in docs/ directory.")
+            print("Solution: Add .md or .pdf files to the docs/ directory")
+            print("Example: docs/readme.md, docs/guide.pdf")
             return
 
         if not self.quiet:
@@ -845,7 +998,12 @@ class UniversalRAG:
             all_documents.extend(docs)
 
         if not all_documents:
-            print("No content extracted from documents")
+            print("ERROR: No content could be extracted from documents")
+            print("This could mean:")
+            print("- PDF files are corrupted or password-protected")
+            print("- Markdown files are empty")
+            print("- Files are not readable")
+            print("Check your files and try again.")
             return
 
         if not self.quiet:
@@ -886,7 +1044,11 @@ class UniversalRAG:
         try:
             collection = self.client.get_collection(self.collection_name)
         except Exception as e:
-            print(f"Collection not found. Run 'python {sys.argv[0]} build' first")
+            print("ERROR: Database collection not found.")
+            print("This usually means you haven't indexed any documents yet.")
+            print(f"Solution: Run 'python {sys.argv[0]} build' first")
+            if not Path("docs").exists():
+                print("Note: You'll also need to create a 'docs/' directory and add .md or .pdf files")
             return []
 
         try:
@@ -1084,7 +1246,7 @@ class UniversalRAG:
                 "db_path": str(self.db_dir),
             }
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": "Database not found. Run 'python raggy.py build' first to index your documents."}
 
     def interactive_search(self):
         """Interactive search mode"""
@@ -1135,6 +1297,9 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  Setup:
+    %(prog)s init                               # Initialize project environment (first-time setup)
+    
   Basic Usage:
     %(prog)s build                              # Build/update index with smart chunking
     %(prog)s search "your search term"         # Semantic search with normalized scores
@@ -1162,7 +1327,7 @@ Examples:
 
     parser.add_argument(
         "command",
-        choices=["build", "rebuild", "search", "interactive", "status", "optimize"],
+        choices=["init", "build", "rebuild", "search", "interactive", "status", "optimize"],
         help="Command to execute",
     )
     parser.add_argument("query", nargs="*", help="Search query (for search command)")
@@ -1228,6 +1393,13 @@ Examples:
 
 def main():
     args = parse_args()
+
+    # Handle init command before dependency setup
+    if args.command == "init":
+        success = setup_environment(quiet=args.quiet)
+        if not success:
+            sys.exit(1)
+        return
 
     # Setup dependencies (unless skipped)
     if not args.skip_deps:
