@@ -1,4 +1,6 @@
-# Universal RAG System v2.0.0
+# Raggy -  Universal RAG System v2.0.0
+
+![raggy](raggy.png)
 
 Enhanced ChromaDB RAG setup with hybrid search, smart chunking, and normalized scoring.
 
