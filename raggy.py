@@ -443,6 +443,7 @@ dependencies = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
     "PyPDF2>=3.0.0",
+    "python-docx>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -471,7 +472,8 @@ build-backend = "hatchling.build"
             "uv", "pip", "install", 
             "chromadb>=0.4.0", 
             "sentence-transformers>=2.2.0", 
-            "PyPDF2>=3.0.0"
+            "PyPDF2>=3.0.0",
+            "python-docx>=1.0.0"
         ], stdout=subprocess.DEVNULL if quiet else None)
         
         # Install platform-specific magic library
@@ -615,6 +617,7 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False):
         "chromadb>=0.4.0",
         "sentence-transformers>=2.2.0",
         "PyPDF2>=3.0.0",
+        "python-docx>=1.0.0",
     ]
 
     # Add platform-specific packages
@@ -720,6 +723,56 @@ class UniversalRAG:
         try:
             with open(file_path, "r", encoding="utf-8") as file:
                 return file.read()
+        except Exception as e:
+            print(f"Warning: Could not read {file_path}: {e}")
+            return ""
+
+    def _extract_text_from_docx(self, file_path: Path) -> str:
+        """Extract text from Word document (.docx)"""
+        try:
+            from docx import Document
+            
+            doc = Document(file_path)
+            text_parts = []
+            
+            # Extract paragraphs
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text_parts.append(paragraph.text.strip())
+            
+            # Extract tables
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = []
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            row_text.append(cell.text.strip())
+                    if row_text:
+                        text_parts.append(" | ".join(row_text))
+            
+            return "\n\n".join(text_parts)
+            
+        except ImportError:
+            print(f"Warning: python-docx not available. Cannot read {file_path}")
+            return ""
+        except Exception as e:
+            print(f"Warning: Could not extract text from {file_path}: {e}")
+            return ""
+
+    def _extract_text_from_txt(self, file_path: Path) -> str:
+        """Extract text from plain text file"""
+        try:
+            # Try UTF-8 first
+            with open(file_path, "r", encoding="utf-8") as file:
+                return file.read()
+        except UnicodeDecodeError:
+            try:
+                # Fallback to latin-1 for older files
+                with open(file_path, "r", encoding="latin-1") as file:
+                    return file.read()
+            except Exception as e:
+                print(f"Warning: Could not read {file_path} with any encoding: {e}")
+                return ""
         except Exception as e:
             print(f"Warning: Could not read {file_path}: {e}")
             return ""
@@ -897,7 +950,7 @@ class UniversalRAG:
             print(f"Please add your documentation files to {self.docs_dir}")
             return []
 
-        patterns = ["**/*.md", "**/*.pdf"]
+        patterns = ["**/*.md", "**/*.pdf", "**/*.docx", "**/*.txt"]
         files = []
 
         for pattern in patterns:
@@ -916,6 +969,10 @@ class UniversalRAG:
                 text = self._extract_text_from_pdf(file_path)
             elif file_path.suffix.lower() == ".md":
                 text = self._extract_text_from_md(file_path)
+            elif file_path.suffix.lower() == ".docx":
+                text = self._extract_text_from_docx(file_path)
+            elif file_path.suffix.lower() == ".txt":
+                text = self._extract_text_from_txt(file_path)
             else:
                 if not self.quiet:
                     print(f"Skipping unsupported file type: {file_path}")
@@ -982,8 +1039,9 @@ class UniversalRAG:
         files = self._find_documents()
         if not files:
             print("ERROR: No documents found in docs/ directory.")
-            print("Solution: Add .md or .pdf files to the docs/ directory")
-            print("Example: docs/readme.md, docs/guide.pdf")
+            print("Solution: Add supported files to the docs/ directory")
+            print("Supported formats: .md, .pdf, .docx, .txt")
+            print("Example: docs/readme.md, docs/guide.pdf, docs/manual.docx, docs/notes.txt")
             return
 
         if not self.quiet:
@@ -1001,6 +1059,8 @@ class UniversalRAG:
             print("ERROR: No content could be extracted from documents")
             print("This could mean:")
             print("- PDF files are corrupted or password-protected")
+            print("- Word documents (.docx) are corrupted")
+            print("- Text files are empty or have encoding issues")
             print("- Markdown files are empty")
             print("- Files are not readable")
             print("Check your files and try again.")
