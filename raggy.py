@@ -504,14 +504,82 @@ build-backend = "hatchling.build"
     if not docs_path.exists():
         docs_path.mkdir()
         if not quiet:
-            print("Created docs/ directory - add your .md or .pdf files here")
+            print("Created docs/ directory - add your documentation files here")
+    
+    # Create example config file if it doesn't exist
+    config_example_path = Path("raggy_config_example.yaml")
+    if not config_example_path.exists():
+        if not quiet:
+            print("Creating raggy_config_example.yaml...")
+        
+        config_content = """# raggy_config_example.yaml - Example Configuration File
+# Copy this to raggy_config.yaml and customize for your domain
+
+search:
+  hybrid_weight: 0.7  # Balance between semantic (0.7) and keyword (0.3) search
+  chunk_size: 1000
+  chunk_overlap: 200
+  rerank: true
+  show_scores: true
+  context_chars: 200
+  max_results: 5
+  
+  # Domain-specific query expansions
+  # Add your own terms here for automatic expansion
+  expansions:
+    # Technical terms (examples)
+    api: ["api", "application programming interface", "rest api", "web service"]
+    ml: ["ml", "machine learning", "artificial intelligence"]
+    ai: ["ai", "artificial intelligence", "machine learning"]
+    ui: ["ui", "user interface", "frontend", "user experience"]
+    ux: ["ux", "user experience", "usability", "user interface"]
+    
+    # Business terms (examples)
+    roi: ["roi", "return on investment", "profitability"]
+    kpi: ["kpi", "key performance indicator", "metrics"]
+    crm: ["crm", "customer relationship management", "customer management"]
+    
+    # Development terms (examples)
+    ci: ["ci", "continuous integration", "build automation"]
+    cd: ["cd", "continuous deployment", "continuous delivery"]
+    devops: ["devops", "development operations", "infrastructure"]
+    
+    # Add your domain-specific terms here:
+    # mycompany: ["mycompany", "company name", "organization"]
+    # myproduct: ["myproduct", "product name", "solution"]
+
+models:
+  default: "all-MiniLM-L6-v2"           # Balanced speed/accuracy
+  fast: "paraphrase-MiniLM-L3-v2"       # Fastest, smaller model  
+  multilingual: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # Multi-language
+  accurate: "all-mpnet-base-v2"         # Best accuracy, slower
+
+chunking:
+  smart: false          # Enable markdown-aware smart chunking (experimental)
+  preserve_headers: true # Include section headers in chunks
+  min_chunk_size: 300   # Minimum chunk size in characters
+  max_chunk_size: 1500  # Maximum chunk size in characters
+
+# Usage:
+# 1. Copy this file to raggy_config.yaml  
+# 2. Customize the expansions section with your domain terms
+# 3. Adjust model and chunking settings as needed
+# 4. Run: python raggy.py search "your-term" --expand
+"""
+        
+        try:
+            with open(config_example_path, "w", encoding="utf-8") as f:
+                f.write(config_content)
+        except Exception as e:
+            print(f"Warning: Could not create raggy_config_example.yaml: {e}")
     
     if not quiet:
         print("✅ Environment setup complete!")
         print("\nNext steps:")
         print("1. Add your documentation files to the docs/ directory")
-        print("2. Run: python raggy.py build")
-        print("3. Run: python raggy.py search \"your query\"")
+        print("2. Optional: Copy raggy_config_example.yaml to raggy_config.yaml and customize")
+        print("3. Run: python raggy.py build")
+        print("4. Run: python raggy.py search \"your query\"")
     
     return True
 
