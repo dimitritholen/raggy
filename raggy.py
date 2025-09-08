@@ -1446,7 +1446,13 @@ class DatabaseManager:
     def client(self):
         """Lazy-load ChromaDB client."""
         if self._client is None:
-            self._client = chromadb.PersistentClient(path=str(self.db_dir))
+            try:
+                global chromadb
+                self._client = chromadb.PersistentClient(path=str(self.db_dir))
+            except NameError:
+                # chromadb not imported yet, try importing
+                import chromadb
+                self._client = chromadb.PersistentClient(path=str(self.db_dir))
         return self._client
     
     def build_index(
@@ -2239,84 +2245,6 @@ class UniversalRAG:
             print(f"Error processing {file_path}: {e}")
             return []
 
-    def build(self, force_rebuild: bool = False) -> None:
-        """Build or update the vector database"""
-        start_time = time.time()
-
-        # Get or create collection
-        try:
-            if force_rebuild:
-                try:
-                    self.client.delete_collection(self.collection_name)
-                    if not self.quiet:
-                        print("Deleted existing collection")
-                except Exception:
-                    pass  # Collection may not exist
-
-            collection = self.client.get_or_create_collection(
-                name=self.collection_name,
-                metadata={"description": "Project documentation embeddings"},
-            )
-        except Exception as e:
-            print(f"Error with collection: {e}")
-            return
-
-        # Find documents
-        files = self._find_documents()
-        if not files:
-            print("ERROR: No documents found in docs/ directory.")
-            print("Solution: Add supported files to the docs/ directory")
-            print("Supported formats: .md, .pdf, .docx, .txt")
-            print("Example: docs/readme.md, docs/guide.pdf, docs/manual.docx, docs/notes.txt")
-            return
-
-        if not self.quiet:
-            print(f"Found {len(files)} documents")
-
-        # Process each document
-        all_documents = []
-        for i, file_path in enumerate(files, 1):
-            if not self.quiet:
-                print(f"[{i}/{len(files)}] Processing {file_path.name}...")
-            docs = self._process_document(file_path)
-            all_documents.extend(docs)
-
-        if not all_documents:
-            print("ERROR: No content could be extracted from documents")
-            print("This could mean:")
-            print("- PDF files are corrupted or password-protected")
-            print("- Word documents (.docx) are corrupted")
-            print("- Text files are empty or have encoding issues")
-            print("- Markdown files are empty")
-            print("- Files are not readable")
-            print("Check your files and try again.")
-            return
-
-        if not self.quiet:
-            print(f"Generated {len(all_documents)} text chunks")
-            print("Generating embeddings...")
-
-        # Generate embeddings and add to collection
-        texts = [doc["text"] for doc in all_documents]
-        embeddings = self.embedding_model.encode(
-            texts, show_progress_bar=not self.quiet
-        )
-
-        # Add to ChromaDB
-        collection.add(
-            embeddings=embeddings.tolist(),
-            documents=texts,
-            metadatas=[doc["metadata"] for doc in all_documents],
-            ids=[doc["id"] for doc in all_documents],
-        )
-
-        elapsed = time.time() - start_time
-        print(
-            f"{SYMBOLS['success']} Successfully indexed {len(all_documents)} chunks from {len(files)} files"
-        )
-        print(f"Database saved to: {self.db_dir}")
-        if not self.quiet:
-            print(f"Build completed in {elapsed:.1f} seconds")
 
     def run_self_tests(self) -> bool:
         """Run built-in self-tests for raggy functionality"""
