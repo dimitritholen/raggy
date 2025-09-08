@@ -51,7 +51,7 @@ python raggy.py optimize                 # Benchmark search modes
 > 
 > Or go **full-automatic** with:
 > 
-> *"Analyze my documentation and create raggy_config.yaml expansions for the most important terms. Do not go overboard, so keep it strategic. Do it step by step. Ultrathink."* 
+> *"Analyze my documentation in ./docs/ and its subfolders and create raggy_config.yaml expansions for the most important terms. Do not go overboard, so keep it strategic. Do it step by step. Ultrathink."* 
 > 
 > This saves time and ensures you capture the right synonyms and related concepts.
 
