@@ -1,0 +1,53 @@
+# Pre-commit hooks for raggy
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: debug-statements
+      - id: check-docstring-first
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-PyYAML]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: '1.7.5'
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+
+  - repo: local
+    hooks:
+      - id: raggy-self-test
+        name: Raggy Self Test
+        entry: python raggy.py test
+        language: system
+        files: raggy\.py$
+        pass_filenames: false
+
+      - id: pytest
+        name: Run tests
+        entry: pytest
+        language: system
+        files: \.(py)$
+        args: [tests/, --tb=short]
+        pass_filenames: false

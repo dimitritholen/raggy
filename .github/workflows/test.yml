@@ -1,0 +1,201 @@
+name: Test and Quality Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv pip install --requirement requirements-dev.txt
+        uv pip install pytest pytest-cov pytest-mock bandit safety mypy ruff
+        uv pip install chromadb>=0.4.0
+        uv pip install sentence-transformers>=2.2.0
+        uv pip install PyPDF2>=3.0.0
+        uv pip install python-docx>=1.0.0
+
+    - name: Run raggy self-tests
+      run: |
+        source .venv/bin/activate
+        python raggy.py test
+
+    - name: Run pytest
+      run: |
+        source .venv/bin/activate
+        pytest tests/ --cov=raggy --cov-report=xml --cov-report=term-missing -v
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+
+    - name: Set up Python 3.11
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install security tools
+      run: |
+        uv pip install bandit safety
+
+    - name: Run Bandit security scan
+      run: |
+        source .venv/bin/activate
+        bandit -r raggy.py -f json -o bandit-report.json || true
+        bandit -r raggy.py
+
+    - name: Run Safety check
+      run: |
+        source .venv/bin/activate
+        uv pip freeze | safety check --json --output safety-report.json || true
+        uv pip freeze | safety check
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+
+    - name: Set up Python 3.11
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install linting tools
+      run: |
+        uv pip install ruff mypy types-PyYAML
+
+    - name: Run Ruff linter
+      run: |
+        source .venv/bin/activate
+        ruff check raggy.py --output-format=github
+
+    - name: Run Ruff formatter check
+      run: |
+        source .venv/bin/activate
+        ruff format --check raggy.py
+
+    - name: Run MyPy type checker
+      run: |
+        source .venv/bin/activate
+        mypy raggy.py --ignore-missing-imports || true
+
+  performance:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+
+    - name: Set up Python 3.11
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: |
+        uv pip install chromadb>=0.4.0
+        uv pip install sentence-transformers>=2.2.0
+        uv pip install PyPDF2>=3.0.0
+        uv pip install python-docx>=1.0.0
+
+    - name: Create test documents
+      run: |
+        mkdir -p test_docs
+        echo "# Test Document 1" > test_docs/doc1.md
+        echo "This is test content for performance testing." >> test_docs/doc1.md
+        echo "# Test Document 2" > test_docs/doc2.md
+        echo "More test content with different keywords and phrases." >> test_docs/doc2.md
+
+    - name: Run performance benchmark
+      run: |
+        source .venv/bin/activate
+        python raggy.py --docs-dir test_docs build
+        python raggy.py --docs-dir test_docs optimize
+
+  integration:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+
+    - name: Set up Python 3.11
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: |
+        uv pip install chromadb>=0.4.0
+        uv pip install sentence-transformers>=2.2.0
+        uv pip install PyPDF2>=3.0.0
+        uv pip install python-docx>=1.0.0
+
+    - name: Run system diagnostics
+      run: |
+        source .venv/bin/activate
+        python raggy.py diagnose
+
+    - name: Run configuration validation
+      run: |
+        source .venv/bin/activate
+        python raggy.py validate
+
+    - name: Test full workflow
+      run: |
+        source .venv/bin/activate
+        mkdir -p integration_test_docs
+        echo "# Integration Test Document" > integration_test_docs/integration.md
+        echo "This document tests the full raggy workflow from indexing to search." >> integration_test_docs/integration.md
+        echo "It includes various terms for search testing: machine learning, API, database." >> integration_test_docs/integration.md
+        
+        python raggy.py --docs-dir integration_test_docs build
+        python raggy.py --docs-dir integration_test_docs search "machine learning"
+        python raggy.py --docs-dir integration_test_docs search "API" --hybrid
+        python raggy.py --docs-dir integration_test_docs status

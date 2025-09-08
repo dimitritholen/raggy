@@ -1,0 +1,169 @@
+[project]
+name = "raggy"
+version = "2.0.0"
+description = "Universal ChromaDB RAG Setup Script - Drop-in RAG solution for any project"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Raggy Contributors"}
+]
+keywords = ["rag", "chromadb", "search", "embeddings", "nlp", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: General",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "PyPDF2>=3.0.0",
+    "python-docx>=1.0.0",
+]
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
+magic-win = ["python-magic-bin>=0.4.14"]
+magic-unix = ["python-magic"]
+all = ["PyYAML>=6.0", "python-magic-bin>=0.4.14;platform_system=='Windows'", "python-magic;platform_system!='Windows'"]
+
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0", 
+    "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "types-PyYAML",
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+    "pytest-benchmark>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/raggy"
+Repository = "https://github.com/example/raggy"
+Issues = "https://github.com/example/raggy/issues"
+Documentation = "https://github.com/example/raggy#readme"
+
+[project.scripts]
+raggy = "raggy:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short", 
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=raggy",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=85",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests", 
+    "security: marks tests as security-focused tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["raggy.py"]
+omit = [
+    "tests/*",
+    ".*/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "PIE", # flake8-pie
+    "SIM", # flake8-simplify
+    "RET", # flake8-return
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "E501",   # line too long, handled by formatter
+    "B008",   # do not perform function calls in argument defaults
+    "B904",   # use raise from within except clause
+    "RET505", # unnecessary else after return
+    "RET508", # unnecessary else after break
+    "SIM108", # use ternary operator instead of if-else
+    "UP007",  # use X | Y for type annotations (Python 3.8 compatibility)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.isort]
+known-first-party = ["raggy"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradual typing
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]  # Skip test for use of assert
+
+[tool.bandit.assert_used]
+skips = ["*_test.py", "test_*.py"]

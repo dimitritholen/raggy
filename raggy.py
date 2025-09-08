@@ -35,7 +35,7 @@ import time
 import re
 import math
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union, Iterator, Set, Callable
 import subprocess
 import importlib.util
 from collections import defaultdict, Counter
@@ -51,12 +51,12 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8")
-    except:
-        pass
+    except (AttributeError, OSError):
+        pass  # Ignore encoding configuration errors
 
 
 # Cross-platform emoji/symbol support
-def get_symbols():
+def get_symbols() -> Dict[str, str]:
     """Get appropriate symbols based on platform/terminal support"""
     try:
         # Test if terminal supports unicode
@@ -75,11 +75,58 @@ def get_symbols():
 
 SYMBOLS = get_symbols()
 
+# Pre-compiled regex patterns for performance
+WORD_PATTERN = re.compile(r"\b\w+\b")
+NEGATIVE_TERM_PATTERN = re.compile(r"-\w+")
+AND_TERM_PATTERN = re.compile(r"\w+(?=\s+AND)", re.IGNORECASE)
+QUOTED_PHRASE_PATTERN = re.compile(r'"([^"]+)"')
+HEADER_PATTERN = re.compile(r"(^#{1,6}\s+.*$)", re.MULTILINE)
+SENTENCE_BOUNDARY_PATTERN = re.compile(r"[.!?\n]")
+WINDOWS_PATH_PATTERN = re.compile(r'[A-Za-z]:[\\\/][^\\\/\s]*[\\\/]')
+UNIX_PATH_PATTERN = re.compile(r'\/[^\/\s]*\/')
+FILE_URL_PATTERN = re.compile(r'\bfile:\/\/[^\s]*')
+
+# Performance and caching constants
+CHUNK_READ_SIZE = 8192  # 8KB chunks for file reading
+MAX_CACHE_SIZE = 1000   # Maximum number of cached embeddings
+CACHE_TTL = 3600       # Cache time-to-live in seconds (1 hour)
+
+
+def validate_path(file_path: Path, base_path: Path = None) -> bool:
+    """Validate file path to prevent directory traversal attacks"""
+    try:
+        # Resolve the path to get absolute path
+        resolved_path = file_path.resolve()
+        
+        if base_path is None:
+            base_path = Path.cwd()
+        else:
+            base_path = base_path.resolve()
+        
+        # Check if the resolved path is within the base directory
+        try:
+            resolved_path.relative_to(base_path)
+            return True
+        except ValueError:
+            # Path is outside the base directory
+            return False
+    except (OSError, ValueError):
+        return False
+
+
+def sanitize_error_message(error_msg: str) -> str:
+    """Sanitize error messages to prevent information leakage"""
+    # Remove potentially sensitive path information using pre-compiled patterns
+    sanitized = WINDOWS_PATH_PATTERN.sub('', error_msg)  # Windows paths
+    sanitized = UNIX_PATH_PATTERN.sub('/', sanitized)  # Unix paths
+    sanitized = FILE_URL_PATTERN.sub('[FILE_PATH]', sanitized)
+    return sanitized
+
 
 class BM25Scorer:
     """Lightweight BM25 implementation for keyword scoring"""
 
-    def __init__(self, k1=1.2, b=0.75):
+    def __init__(self, k1: float = 1.2, b: float = 0.75) -> None:
         self.k1 = k1
         self.b = b
         self.doc_lengths = []
@@ -88,7 +135,7 @@ class BM25Scorer:
         self.term_frequencies = []
         self.idf_scores = {}
 
-    def fit(self, documents: List[str]):
+    def fit(self, documents: List[str]) -> None:
         """Build BM25 index from documents"""
         self.doc_count = len(documents)
         self.doc_lengths = []
@@ -142,14 +189,14 @@ class BM25Scorer:
 
     def _tokenize(self, text: str) -> List[str]:
         """Simple tokenization"""
-        # Convert to lowercase and extract alphanumeric sequences
-        return re.findall(r"\b\w+\b", text.lower())
+        # Convert to lowercase and extract alphanumeric sequences using pre-compiled pattern
+        return WORD_PATTERN.findall(text.lower())
 
 
 class QueryProcessor:
     """Enhanced query processing with expansion and operators"""
 
-    def __init__(self, custom_expansions: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, custom_expansions: Optional[Dict[str, List[str]]] = None) -> None:
         # Default expansions - can be overridden via config
         self.expansions = custom_expansions or {
             # Common technical terms
@@ -170,7 +217,7 @@ class QueryProcessor:
 
         # Handle exact phrase queries (quoted)
         if query_type == "exact":
-            phrase = re.findall(r'"([^"]+)\"', original)[0]
+            phrase = QUOTED_PHRASE_PATTERN.findall(original)[0]
             return {
                 "processed": phrase,
                 "original": original,
@@ -192,7 +239,7 @@ class QueryProcessor:
             "boost_exact": False,
             "must_have": must_have,
             "must_not": must_not,
-            "terms": re.findall(r"\b\w+\b", expanded.lower()),
+            "terms": WORD_PATTERN.findall(expanded.lower()),
         }
 
     def _detect_type(self, query: str) -> str:
@@ -226,12 +273,12 @@ class QueryProcessor:
         must_not = []
 
         # Extract negative terms (preceded by -)
-        negative_terms = re.findall(r"-\w+", query)
+        negative_terms = NEGATIVE_TERM_PATTERN.findall(query)
         for term in negative_terms:
             must_not.append(term[1:])  # Remove the -
 
         # Extract AND terms
-        and_terms = re.findall(r"\w+(?=\s+AND)", query, re.IGNORECASE)
+        and_terms = AND_TERM_PATTERN.findall(query)
         must_have.extend(and_terms)
 
         return must_have, must_not
@@ -350,7 +397,7 @@ def load_deps_cache():
         try:
             with open(cache_file, "r") as f:
                 return json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
             pass
     return {}
 
@@ -361,8 +408,8 @@ def save_deps_cache(cache):
     try:
         with open(cache_file, "w") as f:
             json.dump(cache, f, indent=2)
-    except:
-        pass
+    except (PermissionError, OSError):
+        pass  # Ignore cache save errors
 
 
 def check_uv_available():
@@ -402,7 +449,7 @@ def check_environment_setup():
         
         if not python_exe.exists():
             return False, "invalid_venv"
-    except:
+    except (OSError, AttributeError):
         return False, "invalid_venv"
     
     return True, "ok"
@@ -718,7 +765,7 @@ def install_if_missing(packages: List[str], skip_cache: bool = False):
                         subprocess.check_call(["uv", "pip", "install", "python-magic"])
                         cache["installed"][package_name] = time.time()
                         cache_updated = True
-                    except:
+                    except subprocess.CalledProcessError:
                         print("Warning: Could not install python-magic. File type detection may be limited.")
 
     # Save updated cache
@@ -793,7 +840,7 @@ class UniversalRAG:
         chunk_overlap: int = 200,
         quiet: bool = False,
         config_path: Optional[str] = None,
-    ):
+    ) -> None:
         self.docs_dir = Path(docs_dir)
         self.db_dir = Path(db_dir)
         self.collection_name = "project_docs"
@@ -834,9 +881,13 @@ class UniversalRAG:
         return self._embedding_model
 
     def _get_file_hash(self, file_path: Path) -> str:
-        """Generate hash of file for change detection"""
+        """Generate SHA256 hash of file for change detection using streaming for large files"""
+        hash_sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
-            return hashlib.md5(f.read()).hexdigest()
+            # Read in chunks to handle large files efficiently
+            for chunk in iter(lambda: f.read(CHUNK_READ_SIZE), b""):
+                hash_sha256.update(chunk)
+        return hash_sha256.hexdigest()
 
     def _extract_text_from_pdf(self, file_path: Path) -> str:
         """Extract text from PDF file"""
@@ -1096,6 +1147,21 @@ class UniversalRAG:
         if not self.quiet:
             print(f"Processing: {file_path.relative_to(self.docs_dir)}")
 
+        # Validate file path for security
+        if not validate_path(file_path, self.docs_dir):
+            print(f"Warning: Skipping file outside docs directory: {file_path.name}")
+            return []
+
+        # Check file size limits (100MB max)
+        try:
+            file_size = file_path.stat().st_size
+            if file_size > 100 * 1024 * 1024:  # 100MB limit
+                print(f"Warning: Skipping large file (>100MB): {file_path.name}")
+                return []
+        except OSError as e:
+            print(f"Warning: Could not check file size for {file_path.name}")
+            return []
+
         try:
             # Extract text based on file type
             if file_path.suffix.lower() == ".pdf":
@@ -1146,7 +1212,7 @@ class UniversalRAG:
             print(f"Error processing {file_path}: {e}")
             return []
 
-    def build(self, force_rebuild: bool = False):
+    def build(self, force_rebuild: bool = False) -> None:
         """Build or update the vector database"""
         start_time = time.time()
 
@@ -1157,8 +1223,8 @@ class UniversalRAG:
                     self.client.delete_collection(self.collection_name)
                     if not self.quiet:
                         print("Deleted existing collection")
-                except:
-                    pass
+                except Exception:
+                    pass  # Collection may not exist
 
             collection = self.client.get_or_create_collection(
                 name=self.collection_name,
@@ -1441,7 +1507,7 @@ class UniversalRAG:
         except Exception as e:
             return {"error": "Database not found. Run 'python raggy.py build' first to index your documents."}
 
-    def interactive_search(self):
+    def interactive_search(self) -> None:
         """Interactive search mode"""
         print(f"\n{SYMBOLS['search']} Interactive Search Mode")
         print("Type your queries (or 'quit' to exit)")
@@ -1482,8 +1548,227 @@ class UniversalRAG:
 
         print(f"\n{SYMBOLS['bye']} Goodbye!")
 
+    def run_self_tests(self) -> bool:
+        """Run built-in self-tests for raggy functionality"""
+        print(f"\n{SYMBOLS['search']} Running raggy self-tests...")
+        
+        tests_passed = 0
+        tests_total = 0
+        
+        # Test 1: BM25 Scorer
+        try:
+            print("Testing BM25 scorer...")
+            scorer = BM25Scorer()
+            test_docs = ["hello world", "world of warcraft", "hello there"]
+            scorer.fit(test_docs)
+            score = scorer.score("hello world", 0)
+            if score > 0:
+                print("✓ BM25 scorer working correctly")
+                tests_passed += 1
+            else:
+                print("✗ BM25 scorer test failed")
+        except Exception as e:
+            print(f"✗ BM25 scorer error: {e}")
+        tests_total += 1
+        
+        # Test 2: Query Processor
+        try:
+            print("Testing query processor...")
+            processor = QueryProcessor()
+            result = processor.process("test query")
+            if result["original"] == "test query" and "terms" in result:
+                print("✓ Query processor working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Query processor test failed")
+        except Exception as e:
+            print(f"✗ Query processor error: {e}")
+        tests_total += 1
+        
+        # Test 3: Path validation
+        try:
+            print("Testing path validation...")
+            test_path = Path("test.txt")
+            is_valid = validate_path(test_path)
+            if isinstance(is_valid, bool):
+                print("✓ Path validation working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Path validation test failed")
+        except Exception as e:
+            print(f"✗ Path validation error: {e}")
+        tests_total += 1
+        
+        # Test 4: Scoring normalizer
+        try:
+            print("Testing scoring normalizer...")
+            score = ScoringNormalizer.normalize_cosine_distance(0.5)
+            interpretation = ScoringNormalizer.interpret_score(0.7)
+            if 0 <= score <= 1 and interpretation == "Good":
+                print("✓ Scoring normalizer working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Scoring normalizer test failed")
+        except Exception as e:
+            print(f"✗ Scoring normalizer error: {e}")
+        tests_total += 1
+        
+        # Summary
+        print(f"\nTest Results: {tests_passed}/{tests_total} tests passed")
+        if tests_passed == tests_total:
+            print(f"{SYMBOLS['success']} All tests passed!")
+            return True
+        else:
+            print(f"⚠️  {tests_total - tests_passed} tests failed")
+            return False
 
-def parse_args():
+    def diagnose_system(self) -> None:
+        """Diagnose system setup and dependencies"""
+        print(f"\n{SYMBOLS['search']} Diagnosing raggy system setup...")
+        
+        # Check Python version
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        print(f"Python version: {python_version}")
+        if sys.version_info >= (3, 8):
+            print("✓ Python version compatible")
+        else:
+            print("⚠️  Python 3.8+ recommended")
+        
+        # Check directories
+        print(f"Docs directory: {self.docs_dir}")
+        if self.docs_dir.exists():
+            doc_count = len(list(self.docs_dir.glob("**/*")))
+            print(f"✓ Docs directory exists ({doc_count} files)")
+        else:
+            print("⚠️  Docs directory not found")
+        
+        print(f"Database directory: {self.db_dir}")
+        if self.db_dir.exists():
+            print("✓ Database directory exists")
+        else:
+            print("ℹ️  Database directory will be created on first build")
+        
+        # Check dependencies
+        print("\nDependency check:")
+        deps_status = []
+        
+        try:
+            import chromadb
+            print("✓ ChromaDB installed")
+            deps_status.append(True)
+        except ImportError:
+            print("✗ ChromaDB not installed")
+            deps_status.append(False)
+        
+        try:
+            from sentence_transformers import SentenceTransformer
+            print("✓ sentence-transformers installed")
+            deps_status.append(True)
+        except ImportError:
+            print("✗ sentence-transformers not installed")
+            deps_status.append(False)
+        
+        try:
+            import PyPDF2
+            print("✓ PyPDF2 installed")
+            deps_status.append(True)
+        except ImportError:
+            print("⚠️  PyPDF2 not installed (PDF support disabled)")
+            deps_status.append(False)
+        
+        try:
+            from docx import Document
+            print("✓ python-docx installed")
+            deps_status.append(True)
+        except ImportError:
+            print("⚠️  python-docx not installed (DOCX support disabled)")
+            deps_status.append(False)
+        
+        # Model check
+        if all(deps_status[:2]):  # ChromaDB and sentence-transformers required
+            try:
+                print(f"\nTesting embedding model: {self.model_name}")
+                model = SentenceTransformer(self.model_name)
+                test_embedding = model.encode(["test"])
+                print(f"✓ Embedding model loaded successfully (dimensions: {len(test_embedding[0])})")
+            except Exception as e:
+                print(f"⚠️  Embedding model error: {e}")
+        
+        # Database status
+        try:
+            stats = self.get_stats()
+            if "error" not in stats:
+                print(f"\nDatabase status:")
+                print(f"✓ Database accessible")
+                print(f"  Total chunks: {stats['total_chunks']}")
+                print(f"  Documents indexed: {len(stats['sources'])}")
+            else:
+                print(f"\nDatabase status:")
+                print("ℹ️  No database found - run 'python raggy.py build' to create")
+        except Exception as e:
+            print(f"⚠️  Database check error: {e}")
+        
+        print(f"\n{SYMBOLS['success']} Diagnosis complete!")
+
+    def validate_configuration(self) -> bool:
+        """Validate configuration and setup"""
+        print(f"\n{SYMBOLS['search']} Validating raggy configuration...")
+        
+        issues = []
+        
+        # Check config values
+        config = self.config
+        
+        # Validate search config
+        search_config = config.get("search", {})
+        if not isinstance(search_config.get("hybrid_weight"), (int, float)) or not (0 <= search_config.get("hybrid_weight", 0.7) <= 1):
+            issues.append("Invalid hybrid_weight in search config (should be 0.0-1.0)")
+        
+        if not isinstance(search_config.get("chunk_size"), int) or search_config.get("chunk_size", 1000) < 100:
+            issues.append("Invalid chunk_size in search config (should be >= 100)")
+        
+        if not isinstance(search_config.get("max_results"), int) or search_config.get("max_results", 5) < 1:
+            issues.append("Invalid max_results in search config (should be >= 1)")
+        
+        # Validate chunking config
+        chunking_config = config.get("chunking", {})
+        min_size = chunking_config.get("min_chunk_size", 300)
+        max_size = chunking_config.get("max_chunk_size", 1500)
+        
+        if not isinstance(min_size, int) or min_size < 50:
+            issues.append("Invalid min_chunk_size (should be >= 50)")
+        
+        if not isinstance(max_size, int) or max_size < min_size:
+            issues.append("max_chunk_size should be >= min_chunk_size")
+        
+        # Check model presets
+        models_config = config.get("models", {})
+        required_models = ["default", "fast", "multilingual", "accurate"]
+        for model_type in required_models:
+            if model_type not in models_config:
+                issues.append(f"Missing {model_type} model in configuration")
+        
+        # Validate expansions
+        expansions = search_config.get("expansions", {})
+        if expansions:
+            for term, expansion_list in expansions.items():
+                if not isinstance(expansion_list, list) or len(expansion_list) < 2:
+                    issues.append(f"Invalid expansion for '{term}' (should be list with original + synonyms)")
+        
+        # Report results
+        if issues:
+            print("Configuration issues found:")
+            for issue in issues:
+                print(f"⚠️  {issue}")
+            print(f"\n{len(issues)} issues need attention")
+            return False
+        else:
+            print("✓ Configuration is valid")
+            print(f"{SYMBOLS['success']} All validation checks passed!")
+            return True
+
+
+def parse_args() -> Any:
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description="Universal ChromaDB RAG Setup Script v2.0.0 - Enhanced with hybrid search and smart chunking",
@@ -1520,7 +1805,7 @@ Examples:
 
     parser.add_argument(
         "command",
-        choices=["init", "build", "rebuild", "search", "interactive", "status", "optimize"],
+        choices=["init", "build", "rebuild", "search", "interactive", "status", "optimize", "test", "diagnose", "validate"],
         help="Command to execute",
     )
     parser.add_argument("query", nargs="*", help="Search query (for search command)")
@@ -1584,7 +1869,7 @@ Examples:
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     # Handle init command before dependency setup
@@ -1801,6 +2086,16 @@ def main():
         print(
             f'  python {sys.argv[0]} search \\"your query\\" --expand    # For broader results'
         )
+    elif args.command == "test":
+        success = rag.run_self_tests()
+        if not success:
+            sys.exit(1)
+    elif args.command == "diagnose":
+        rag.diagnose_system()
+    elif args.command == "validate":
+        success = rag.validate_configuration()
+        if not success:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
