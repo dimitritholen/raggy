@@ -40,6 +40,9 @@ import subprocess
 import importlib.util
 from collections import defaultdict, Counter
 
+# Version information
+__version__ = "2.0.0"
+
 # Configure UTF-8 encoding for cross-platform compatibility
 if sys.platform == "win32":
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -121,6 +124,67 @@ def sanitize_error_message(error_msg: str) -> str:
     sanitized = UNIX_PATH_PATTERN.sub('/', sanitized)  # Unix paths
     sanitized = FILE_URL_PATTERN.sub('[FILE_PATH]', sanitized)
     return sanitized
+
+
+def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> None:
+    """Check GitHub for latest version once per session (non-intrusive)"""
+    if quiet:
+        return
+    
+    # Load configuration for update settings
+    if config is None:
+        config = {}
+    
+    updates_config = config.get("updates", {})
+    if not updates_config.get("check_enabled", True):
+        return
+    
+    # Use configured repo or default placeholder
+    github_repo = updates_config.get("github_repo", "dimitritholen/raggy")
+    
+    # Session tracking to avoid frequent checks
+    session_file = Path.home() / ".raggy_session"
+    
+    # Check if already checked in last 24 hours
+    if session_file.exists():
+        try:
+            if time.time() - session_file.stat().st_mtime < 86400:  # 24 hours
+                return
+        except (OSError, AttributeError):
+            pass  # If we can't check file time, proceed with check
+    
+    try:
+        # Import urllib only when needed to avoid startup cost
+        import urllib.request
+        import urllib.error
+        
+        # Quick timeout to not delay startup (2 seconds max)
+        api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
+        
+        with urllib.request.urlopen(api_url, timeout=2) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                latest_version = data.get("tag_name", "").lstrip("v")
+                
+                if latest_version and latest_version != __version__:
+                    # Use HTML URL from response or construct fallback
+                    github_url = data.get("html_url")
+                    if not github_url:
+                        github_url = f"https://github.com/{github_repo}/releases/latest"
+                    
+                    print(f"📦 Raggy update available: v{latest_version} → {github_url}")
+        
+        # Update session file to mark check as done
+        try:
+            session_file.touch()
+        except (OSError, PermissionError):
+            pass  # If we can't create session file, just skip tracking
+            
+    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, 
+            ConnectionError, TimeoutError, Exception):
+        # Silently fail - don't interrupt user workflow with network issues
+        # This includes any import errors, network timeouts, or API issues
+        pass
 
 
 class BM25Scorer:
@@ -352,6 +416,10 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
             "preserve_headers": True,
             "min_chunk_size": 300,
             "max_chunk_size": 1500,
+        },
+        "updates": {
+            "check_enabled": True,  # Enable update checking by default
+            "github_repo": "dimitritholen/raggy",  # Repository for update checks
         },
     }
 
@@ -1864,13 +1932,22 @@ Examples:
     parser.add_argument(
         "--config", help="Path to config file (default: raggy_config.yaml)"
     )
-    parser.add_argument("--version", action="version", version="raggy 2.0.0")
+    parser.add_argument("--version", action="version", version=f"raggy {__version__}")
 
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+
+    # Check for updates early (non-intrusive, once per session)
+    # Do this before expensive operations but after arg parsing
+    try:
+        # Load config to get update settings
+        config = load_config(args.config) if hasattr(args, 'config') else {}
+        check_for_updates(quiet=args.quiet, config=config)
+    except Exception:
+        pass  # Silently fail - don't interrupt user workflow
 
     # Handle init command before dependency setup
     if args.command == "init":
