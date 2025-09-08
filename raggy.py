@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""
-Universal ChromaDB RAG Setup Script v2.0.0
+"""Universal ChromaDB RAG Setup Script v2.0.0.
+
 Enhanced with hybrid search, smart chunking, and normalized scoring.
 
 Drop this into any project and run:
-  python raggy.py build                       # Build/index all docs with smart chunking
-  python raggy.py rebuild --fast              # Clean rebuild with faster model
-  python raggy.py search "your query"         # Semantic search with normalized scores
-  python raggy.py search "exact term" --hybrid # Hybrid semantic+keyword search
+  python raggy.py build                       # Build/index all docs
+  python raggy.py rebuild --fast              # Clean rebuild with faster model  
+  python raggy.py search "your query"         # Semantic search with scores
+  python raggy.py search "exact term" --hybrid # Hybrid semantic+keyword
   python raggy.py search "api" --expand        # Query expansion with synonyms
   python raggy.py interactive --quiet         # Interactive search mode
   python raggy.py status                      # Database stats with model info
@@ -16,32 +16,66 @@ Drop this into any project and run:
 
 Key Features:
 • Hybrid Search: Combines semantic + BM25 keyword ranking for exact matches
-• Smart Chunking: Markdown-aware chunking preserving document structure
-• Normalized Scoring: 0-1 scores with human-readable labels (Excellent/Good/Fair/Poor)
-• Query Processing: Automatic expansion of domain terms (api → application programming interface)
+• Smart Chunking: Markdown-aware chunking preserving document structure  
+• Normalized Scoring: 0-1 scores with human-readable labels
+• Query Processing: Automatic expansion of domain terms
 • Model Presets: --model-preset fast/balanced/multilingual/accurate
 • Config Support: Optional raggy_config.yaml for customization
 • Multilingual: Enhanced Dutch/English mixed content support
 • Backward Compatible: All v1.x commands work unchanged
 """
 
-import os
-import sys
+# Standard library imports
+import argparse
 import glob
 import hashlib
-import argparse
-import json
-import time
-import re
-import math
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple, Union, Iterator, Set, Callable
-import subprocess
 import importlib.util
-from collections import defaultdict, Counter
+import json
+import math
+import os
+import re
+import subprocess
+import sys
+import time
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 # Version information
 __version__ = "2.0.0"
+
+# Constants
+CHUNK_READ_SIZE = 8192  # 8KB chunks for file reading
+MAX_CACHE_SIZE = 1000   # Maximum number of cached embeddings  
+CACHE_TTL = 3600       # Cache time-to-live in seconds (1 hour)
+MAX_FILE_SIZE_MB = 100  # Maximum file size in MB
+SESSION_CACHE_HOURS = 24  # Hours before update check
+UPDATE_TIMEOUT_SECONDS = 2  # API timeout for update checks
+DEFAULT_CHUNK_SIZE = 1000
+DEFAULT_CHUNK_OVERLAP = 200
+DEFAULT_RESULTS = 5
+DEFAULT_CONTEXT_CHARS = 200
+DEFAULT_HYBRID_WEIGHT = 0.7
+
+# File type constants
+SUPPORTED_EXTENSIONS = [".md", ".pdf", ".docx", ".txt"]
+GLOB_PATTERNS = ["**/*.md", "**/*.pdf", "**/*.docx", "**/*.txt"]
+
+# Model presets
+FAST_MODEL = "paraphrase-MiniLM-L3-v2"
+DEFAULT_MODEL = "all-MiniLM-L6-v2"
+MULTILINGUAL_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+ACCURATE_MODEL = "all-mpnet-base-v2"
 
 # Configure UTF-8 encoding for cross-platform compatibility
 if sys.platform == "win32":
@@ -60,17 +94,22 @@ if sys.platform == "win32":
 
 # Cross-platform emoji/symbol support
 def get_symbols() -> Dict[str, str]:
-    """Get appropriate symbols based on platform/terminal support"""
+    """Get appropriate symbols based on platform/terminal support."""
     try:
         # Test if terminal supports unicode
         test = "🔍"
         print(test, end="")
         print("\b \b", end="")  # backspace and clear
-        return {"search": "🔍", "found": "📋", "success": "✅", "bye": "👋"}
+        return {
+            "search": "🔍", 
+            "found": "📋", 
+            "success": "✅", 
+            "bye": "👋"
+        }
     except UnicodeEncodeError:
         return {
             "search": "[Search]",
-            "found": "[Found]",
+            "found": "[Found]", 
             "success": "[Success]",
             "bye": "[Bye]",
         }
@@ -89,14 +128,9 @@ WINDOWS_PATH_PATTERN = re.compile(r'[A-Za-z]:[\\\/][^\\\/\s]*[\\\/]')
 UNIX_PATH_PATTERN = re.compile(r'\/[^\/\s]*\/')
 FILE_URL_PATTERN = re.compile(r'\bfile:\/\/[^\s]*')
 
-# Performance and caching constants
-CHUNK_READ_SIZE = 8192  # 8KB chunks for file reading
-MAX_CACHE_SIZE = 1000   # Maximum number of cached embeddings
-CACHE_TTL = 3600       # Cache time-to-live in seconds (1 hour)
 
-
-def validate_path(file_path: Path, base_path: Path = None) -> bool:
-    """Validate file path to prevent directory traversal attacks"""
+def validate_path(file_path: Path, base_path: Optional[Path] = None) -> bool:
+    """Validate file path to prevent directory traversal attacks."""
     try:
         # Resolve the path to get absolute path
         resolved_path = file_path.resolve()
@@ -118,16 +152,52 @@ def validate_path(file_path: Path, base_path: Path = None) -> bool:
 
 
 def sanitize_error_message(error_msg: str) -> str:
-    """Sanitize error messages to prevent information leakage"""
+    """Sanitize error messages to prevent information leakage."""
     # Remove potentially sensitive path information using pre-compiled patterns
     sanitized = WINDOWS_PATH_PATTERN.sub('', error_msg)  # Windows paths
-    sanitized = UNIX_PATH_PATTERN.sub('/', sanitized)  # Unix paths
+    sanitized = UNIX_PATH_PATTERN.sub('/', sanitized)  # Unix paths  
     sanitized = FILE_URL_PATTERN.sub('[FILE_PATH]', sanitized)
     return sanitized
 
 
-def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> None:
-    """Check GitHub for latest version once per session (non-intrusive)"""
+def log_error(message: str, error: Optional[Exception] = None, *, quiet: bool = False) -> None:
+    """Centralized error logging with consistent formatting."""
+    if quiet:
+        return
+    
+    if error:
+        sanitized_error = sanitize_error_message(str(error))
+        print(f"ERROR: {message}: {sanitized_error}")
+    else:
+        print(f"ERROR: {message}")
+
+
+def log_warning(message: str, error: Optional[Exception] = None, *, quiet: bool = False) -> None:
+    """Centralized warning logging with consistent formatting."""
+    if quiet:
+        return
+    
+    if error:
+        sanitized_error = sanitize_error_message(str(error))
+        print(f"Warning: {message}: {sanitized_error}")
+    else:
+        print(f"Warning: {message}")
+
+
+def handle_file_error(file_path: Path, operation: str, error: Exception, *, quiet: bool = False) -> None:
+    """Standardized file operation error handling."""
+    if isinstance(error, (FileNotFoundError, PermissionError)):
+        log_error(f"Cannot {operation} {file_path.name} - {type(error).__name__}", quiet=quiet)
+    elif isinstance(error, UnicodeDecodeError):
+        log_error(f"Cannot {operation} {file_path.name} - encoding issue", quiet=quiet)
+    else:
+        log_error(f"Cannot {operation} {file_path.name}", error, quiet=quiet)
+
+
+def check_for_updates(
+    quiet: bool = False, config: Optional[Dict[str, Any]] = None
+) -> None:
+    """Check GitHub for latest version once per session (non-intrusive)."""
     if quiet:
         return
     
@@ -148,7 +218,8 @@ def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> Non
     # Check if already checked in last 24 hours
     if session_file.exists():
         try:
-            if time.time() - session_file.stat().st_mtime < 86400:  # 24 hours
+            cache_age = time.time() - session_file.stat().st_mtime
+            if cache_age < SESSION_CACHE_HOURS * 3600:  # 24 hours
                 return
         except (OSError, AttributeError):
             pass  # If we can't check file time, proceed with check
@@ -158,10 +229,10 @@ def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> Non
         import urllib.request
         import urllib.error
         
-        # Quick timeout to not delay startup (2 seconds max)
+        # Quick timeout to not delay startup
         api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
         
-        with urllib.request.urlopen(api_url, timeout=2) as response:
+        with urllib.request.urlopen(api_url, timeout=UPDATE_TIMEOUT_SECONDS) as response:
             if response.status == 200:
                 data = json.loads(response.read().decode('utf-8'))
                 latest_version = data.get("tag_name", "").lstrip("v")
@@ -170,7 +241,8 @@ def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> Non
                     # Use HTML URL from response or construct fallback
                     github_url = data.get("html_url")
                     if not github_url:
-                        github_url = f"https://github.com/{github_repo}/releases/latest"
+                        base_url = f"https://github.com/{github_repo}"
+                        github_url = f"{base_url}/releases/latest"
                     
                     print(f"📦 Raggy update available: v{latest_version} → {github_url}")
         
@@ -180,31 +252,37 @@ def check_for_updates(quiet: bool = False, config: Dict[str, Any] = None) -> Non
         except (OSError, PermissionError):
             pass  # If we can't create session file, just skip tracking
             
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, 
-            ConnectionError, TimeoutError, Exception):
+    except (
+        urllib.error.URLError, 
+        urllib.error.HTTPError, 
+        json.JSONDecodeError,
+        ConnectionError, 
+        TimeoutError, 
+        Exception
+    ):
         # Silently fail - don't interrupt user workflow with network issues
         # This includes any import errors, network timeouts, or API issues
         pass
 
 
 class BM25Scorer:
-    """Lightweight BM25 implementation for keyword scoring"""
+    """Lightweight BM25 implementation for keyword scoring."""
 
     def __init__(self, k1: float = 1.2, b: float = 0.75) -> None:
         self.k1 = k1
         self.b = b
-        self.doc_lengths = []
-        self.avg_doc_length = 0
+        self.doc_lengths: List[int] = []
+        self.avg_doc_length = 0.0
         self.doc_count = 0
-        self.term_frequencies = []
-        self.idf_scores = {}
+        self.term_frequencies: List[Dict[str, int]] = []
+        self.idf_scores: Dict[str, float] = {}
 
     def fit(self, documents: List[str]) -> None:
-        """Build BM25 index from documents"""
+        """Build BM25 index from documents."""
         self.doc_count = len(documents)
         self.doc_lengths = []
         self.term_frequencies = []
-        doc_term_counts = defaultdict(int)
+        doc_term_counts: Dict[str, int] = defaultdict(int)
 
         # Calculate term frequencies and document lengths
         for doc in documents:
@@ -219,17 +297,18 @@ class BM25Scorer:
                 doc_term_counts[term] += 1
 
         self.avg_doc_length = (
-            sum(self.doc_lengths) / len(self.doc_lengths) if self.doc_lengths else 0
+            sum(self.doc_lengths) / len(self.doc_lengths) 
+            if self.doc_lengths else 0.0
         )
 
         # Calculate IDF scores
         for term, doc_freq in doc_term_counts.items():
-            self.idf_scores[term] = math.log(
-                (self.doc_count - doc_freq + 0.5) / (doc_freq + 0.5)
-            )
+            # Use standard BM25 IDF: log((N + 1) / df)
+            # This avoids negative scores and is more stable for small datasets
+            self.idf_scores[term] = math.log((self.doc_count + 1) / doc_freq)
 
     def score(self, query: str, doc_index: int) -> float:
-        """Calculate BM25 score for query against document"""
+        """Calculate BM25 score for query against document."""
         if doc_index >= len(self.term_frequencies):
             return 0.0
 
@@ -241,15 +320,16 @@ class BM25Scorer:
         for term in query_terms:
             if term in term_freq:
                 tf = term_freq[term]
-                idf = self.idf_scores.get(term, 0)
+                idf = self.idf_scores.get(term, 0.0)
 
                 numerator = tf * (self.k1 + 1)
-                denominator = tf + self.k1 * (
+                length_normalization = (
                     1 - self.b + self.b * (doc_length / self.avg_doc_length)
                 )
+                denominator = tf + self.k1 * length_normalization
                 score += idf * (numerator / denominator)
 
-        return max(0, score)  # Ensure non-negative scores
+        return max(0.0, score)  # Ensure non-negative scores
 
     def _tokenize(self, text: str) -> List[str]:
         """Simple tokenization"""
@@ -258,9 +338,11 @@ class BM25Scorer:
 
 
 class QueryProcessor:
-    """Enhanced query processing with expansion and operators"""
+    """Enhanced query processing with expansion and operators."""
 
-    def __init__(self, custom_expansions: Optional[Dict[str, List[str]]] = None) -> None:
+    def __init__(
+        self, custom_expansions: Optional[Dict[str, List[str]]] = None
+    ) -> None:
         # Default expansions - can be overridden via config
         self.expansions = custom_expansions or {
             # Common technical terms
@@ -273,7 +355,7 @@ class QueryProcessor:
         }
 
     def process(self, query: str) -> Dict[str, Any]:
-        """Process query and return enhanced version with metadata"""
+        """Process query and return enhanced version with metadata."""
         original = query.strip()
 
         # Detect query type
@@ -307,18 +389,20 @@ class QueryProcessor:
         }
 
     def _detect_type(self, query: str) -> str:
-        """Detect query type"""
+        """Detect query type."""
         if '"' in query:
             return "exact"
-        elif any(
-            word in query.lower()
-            for word in ["how", "what", "why", "when", "where", "who"]
-        ):
+        
+        question_words = ["how", "what", "why", "when", "where", "who"]
+        if any(word in query.lower() for word in question_words):
             return "question"
-        elif " AND " in query.upper() or " OR " in query.upper() or " -" in query:
+        
+        boolean_operators = [" AND ", " OR ", " -"]
+        query_upper = query.upper()
+        if any(op in query_upper or op.strip() in query for op in boolean_operators):
             return "boolean"
-        else:
-            return "keyword"
+        
+        return "keyword"
 
     def _expand_query(self, query: str) -> str:
         """Expand query with synonyms"""
@@ -348,54 +432,52 @@ class QueryProcessor:
         return must_have, must_not
 
 
-class ScoringNormalizer:
-    """Normalize and interpret similarity scores"""
+# Scoring utility functions (converted from class with static methods)
+def normalize_cosine_distance(distance: float) -> float:
+    """Convert cosine distance to similarity (0-1, higher is better)."""
+    # ChromaDB returns cosine distance (0 = identical, 2 = opposite)
+    # Convert to similarity: 1 - (distance / 2)
+    similarity = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+    return similarity
 
-    @staticmethod
-    def normalize_cosine_distance(distance: float) -> float:
-        """Convert cosine distance to similarity (0-1, higher is better)"""
-        # ChromaDB returns cosine distance (0 = identical, 2 = opposite)
-        # Convert to similarity: 1 - (distance / 2)
-        similarity = max(0, min(1, 1 - (distance / 2)))
-        return similarity
 
-    @staticmethod
-    def normalize_hybrid_score(
-        semantic_score: float, keyword_score: float, semantic_weight: float = 0.7
-    ) -> float:
-        """Combine semantic and keyword scores"""
-        # Normalize keyword score to 0-1 range (assuming max BM25 ~10)
-        normalized_keyword = min(1.0, keyword_score / 10.0)
+def normalize_hybrid_score(
+    semantic_score: float, 
+    keyword_score: float, 
+    semantic_weight: float = DEFAULT_HYBRID_WEIGHT
+) -> float:
+    """Combine semantic and keyword scores."""
+    # Normalize keyword score to 0-1 range (assuming max BM25 ~10)
+    normalized_keyword = min(1.0, keyword_score / 10.0)
 
-        return (
-            semantic_weight * semantic_score
-            + (1 - semantic_weight) * normalized_keyword
-        )
+    weighted_semantic = semantic_weight * semantic_score
+    weighted_keyword = (1 - semantic_weight) * normalized_keyword
+    return weighted_semantic + weighted_keyword
 
-    @staticmethod
-    def interpret_score(score: float) -> str:
-        """Provide human-readable score interpretation"""
-        if score >= 0.8:
-            return "Excellent"
-        elif score >= 0.6:
-            return "Good"
-        elif score >= 0.4:
-            return "Fair"
-        else:
-            return "Poor"
+
+def interpret_score(score: float) -> str:
+    """Provide human-readable score interpretation."""
+    if score >= 0.8:
+        return "Excellent"
+    elif score >= 0.6:
+        return "Good"
+    elif score >= 0.4:
+        return "Fair"
+    else:
+        return "Poor"
 
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
-    """Load optional configuration file"""
+    """Load optional configuration file."""
     default_config = {
         "search": {
-            "hybrid_weight": 0.7,
-            "chunk_size": 1000,
-            "chunk_overlap": 200,
+            "hybrid_weight": DEFAULT_HYBRID_WEIGHT,
+            "chunk_size": DEFAULT_CHUNK_SIZE,
+            "chunk_overlap": DEFAULT_CHUNK_OVERLAP,
             "rerank": True,
             "show_scores": True,
-            "context_chars": 200,
-            "max_results": 5,
+            "context_chars": DEFAULT_CONTEXT_CHARS,
+            "max_results": DEFAULT_RESULTS,
             "expansions": {
                 # Add domain-specific expansions here
                 "api": ["api", "application programming interface"],
@@ -406,10 +488,10 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
             },
         },
         "models": {
-            "default": "all-MiniLM-L6-v2",
-            "fast": "paraphrase-MiniLM-L3-v2",
-            "multilingual": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-            "accurate": "all-mpnet-base-v2",
+            "default": DEFAULT_MODEL,
+            "fast": FAST_MODEL,
+            "multilingual": MULTILINGUAL_MODEL,
+            "accurate": ACCURATE_MODEL,
         },
         "chunking": {
             "smart": False,  # Disable by default to prevent issues
@@ -433,24 +515,36 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
                 user_config = yaml.safe_load(f)
 
             # Merge with defaults
-            def merge_configs(default, user):
-                for key, value in user.items():
-                    if (
-                        key in default
-                        and isinstance(default[key], dict)
-                        and isinstance(value, dict)
-                    ):
-                        merge_configs(default[key], value)
-                    else:
-                        default[key] = value
-
-            merge_configs(default_config, user_config)
+            _merge_configs(default_config, user_config)
         except ImportError:
-            print("Note: PyYAML not installed, using default config")
+            log_warning("PyYAML not installed, using default config", quiet=False)
+        except (FileNotFoundError, PermissionError) as e:
+            log_warning(f"Could not access config file {config_file}", e, quiet=False)
+        except Exception as yaml_error:
+            # Handle YAML parsing errors (yaml module imported locally)
+            if any(keyword in str(yaml_error).lower() 
+                   for keyword in ["yaml", "scanner", "parser", "constructor"]):
+                log_warning(f"Invalid YAML format in {config_file}", yaml_error, quiet=False)
+            else:
+                # Re-raise if it's not a YAML parsing error
+                raise yaml_error
         except Exception as e:
-            print(f"Warning: Could not load config file: {e}")
+            log_warning(f"Unexpected error loading config file {config_file}", e, quiet=False)
 
     return default_config
+
+
+def _merge_configs(default: Dict[str, Any], user: Dict[str, Any]) -> None:
+    """Recursively merge user config into default config."""
+    for key, value in user.items():
+        if (
+            key in default
+            and isinstance(default[key], dict)
+            and isinstance(value, dict)
+        ):
+            _merge_configs(default[key], value)
+        else:
+            default[key] = value
 
 
 def get_cache_file():
@@ -523,27 +617,25 @@ def check_environment_setup():
     return True, "ok"
 
 
-def setup_environment(quiet: bool = False):
-    """Set up the project environment from scratch"""
-    if not quiet:
-        print("🚀 Setting up raggy environment...")
-    
-    # Check if uv is available
-    if not check_uv_available():
-        return False
-    
-    # Create virtual environment
+def _create_virtual_environment(quiet: bool = False) -> bool:
+    """Create virtual environment if it doesn't exist."""
     venv_path = Path(".venv")
     if not venv_path.exists():
         if not quiet:
             print("Creating virtual environment...")
         try:
-            subprocess.check_call(["uv", "venv"], stdout=subprocess.DEVNULL if quiet else None)
+            subprocess.check_call(
+                ["uv", "venv"], 
+                stdout=subprocess.DEVNULL if quiet else None
+            )
         except subprocess.CalledProcessError as e:
             print(f"ERROR: Failed to create virtual environment: {e}")
             return False
-    
-    # Create minimal pyproject.toml if it doesn't exist
+    return True
+
+
+def _create_project_config(quiet: bool = False) -> bool:
+    """Create minimal pyproject.toml if it doesn't exist."""
     pyproject_path = Path("pyproject.toml")
     if not pyproject_path.exists():
         if not quiet:
@@ -573,63 +665,86 @@ build-backend = "hatchling.build"
         try:
             with open(pyproject_path, "w", encoding="utf-8") as f:
                 f.write(pyproject_content)
-        except Exception as e:
-            print(f"ERROR: Failed to create pyproject.toml: {e}")
+        except (PermissionError, OSError) as e:
+            log_error("Failed to create pyproject.toml", e, quiet=False)
             return False
-    
-    # Install dependencies
+    return True
+
+
+def _install_dependencies(quiet: bool = False) -> bool:
+    """Install core and platform-specific dependencies."""
     if not quiet:
         print("Installing dependencies...")
     
     try:
         # Install base dependencies
-        subprocess.check_call([
-            "uv", "pip", "install", 
+        base_deps = [
             "chromadb>=0.4.0", 
             "sentence-transformers>=2.2.0", 
             "PyPDF2>=3.0.0",
             "python-docx>=1.0.0"
-        ], stdout=subprocess.DEVNULL if quiet else None)
+        ]
+        subprocess.check_call(
+            ["uv", "pip", "install"] + base_deps,
+            stdout=subprocess.DEVNULL if quiet else None
+        )
         
         # Install platform-specific magic library
-        if sys.platform == "win32":
-            try:
-                subprocess.check_call([
-                    "uv", "pip", "install", "python-magic-bin>=0.4.14"
-                ], stdout=subprocess.DEVNULL if quiet else None)
-            except subprocess.CalledProcessError:
-                if not quiet:
-                    print("Warning: Could not install python-magic-bin. File type detection may be limited.")
-        else:
-            try:
-                subprocess.check_call([
-                    "uv", "pip", "install", "python-magic"
-                ], stdout=subprocess.DEVNULL if quiet else None)
-            except subprocess.CalledProcessError:
-                if not quiet:
-                    print("Warning: Could not install python-magic. File type detection may be limited.")
+        _install_magic_library(quiet)
         
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to install dependencies: {e}")
-        print("You can try installing manually with: uv pip install chromadb sentence-transformers PyPDF2")
+        print("Manual install: uv pip install chromadb sentence-transformers PyPDF2")
         return False
     
-    # Create docs directory if it doesn't exist
+    return True
+
+
+def _install_magic_library(quiet: bool = False) -> None:
+    """Install platform-specific magic library for file type detection."""
+    magic_package = (
+        "python-magic-bin>=0.4.14" if sys.platform == "win32" 
+        else "python-magic"
+    )
+    
+    try:
+        subprocess.check_call(
+            ["uv", "pip", "install", magic_package],
+            stdout=subprocess.DEVNULL if quiet else None
+        )
+    except subprocess.CalledProcessError:
+        if not quiet:
+            package_name = magic_package.split(">")[0]  # Remove version spec
+            warning = f"Warning: Could not install {package_name}. "
+            warning += "File type detection may be limited."
+            print(warning)
+
+
+def _create_docs_directory(quiet: bool = False) -> Optional[Path]:
+    """Create docs directory if it doesn't exist."""
     docs_path = Path("docs")
     if not docs_path.exists():
-        docs_path.mkdir()
-        if not quiet:
-            print("Created docs/ directory - add your documentation files here")
-    
-    # Create initial DEVELOPMENT_STATE.md for AI workflow tracking
+        try:
+            docs_path.mkdir()
+            if not quiet:
+                print("Created docs/ directory - add your documentation files here")
+        except OSError as e:
+            print(f"ERROR: Failed to create docs directory: {e}")
+            return None
+    return docs_path
+
+
+def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool:
+    """Create initial DEVELOPMENT_STATE.md for AI workflow tracking."""
     dev_state_path = docs_path / "DEVELOPMENT_STATE.md"
     if not dev_state_path.exists():
         if not quiet:
             print("Creating initial DEVELOPMENT_STATE.md...")
         
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         dev_state_content = f"""# Development State
 
-**Last Updated:** {time.strftime('%Y-%m-%d %H:%M:%S')}
+**Last Updated:** {timestamp}
 **RAG System:** Raggy v2.0.0 - Universal ChromaDB RAG Setup
 
 ## Project Status: INITIALIZED
@@ -678,10 +793,57 @@ build-backend = "hatchling.build"
         try:
             with open(dev_state_path, "w", encoding="utf-8") as f:
                 f.write(dev_state_content)
-        except Exception as e:
-            print(f"Warning: Could not create DEVELOPMENT_STATE.md: {e}")
+        except (PermissionError, OSError) as e:
+            log_warning("Could not create DEVELOPMENT_STATE.md", e, quiet=False)
+            return False
+    
+    return True
+
+
+def setup_environment(quiet: bool = False) -> bool:
+    """Set up the project environment from scratch."""
+    if not quiet:
+        print("🚀 Setting up raggy environment...")
+    
+    # Check if uv is available
+    if not check_uv_available():
+        return False
+    
+    # Create virtual environment
+    if not _create_virtual_environment(quiet):
+        return False
+    
+    # Create minimal pyproject.toml if it doesn't exist
+    if not _create_project_config(quiet):
+        return False
+    
+    # Install dependencies
+    if not _install_dependencies(quiet):
+        return False
+    
+    # Create docs directory if it doesn't exist
+    docs_path = _create_docs_directory(quiet)
+    if docs_path is None:
+        return False
+    
+    # Create initial DEVELOPMENT_STATE.md for AI workflow tracking
+    if not _create_development_state_file(docs_path, quiet):
+        # Warning already printed, continue anyway
+        pass
     
     # Create example config file if it doesn't exist
+    if not _create_example_config(quiet):
+        # Warning already printed, continue anyway
+        pass
+    
+    if not quiet:
+        _print_setup_summary()
+    
+    return True
+
+
+def _create_example_config(quiet: bool = False) -> bool:
+    """Create example configuration file."""
     config_example_path = Path("raggy_config_example.yaml")
     if not config_example_path.exists():
         if not quiet:
@@ -745,23 +907,26 @@ chunking:
         try:
             with open(config_example_path, "w", encoding="utf-8") as f:
                 f.write(config_content)
-        except Exception as e:
-            print(f"Warning: Could not create raggy_config_example.yaml: {e}")
-    
-    if not quiet:
-        print("✅ Environment setup complete!")
-        print("\nCreated files:")
-        print("- .venv/ (virtual environment)")
-        print("- pyproject.toml (project configuration)")
-        print("- raggy_config_example.yaml (example configuration)")
-        print("- docs/DEVELOPMENT_STATE.md (AI agent continuity tracking)")
-        print("\nNext steps:")
-        print("1. Add your documentation files to the docs/ directory")
-        print("2. Optional: Copy raggy_config_example.yaml to raggy_config.yaml and customize")
-        print("3. Run: python raggy.py build")
-        print("4. Run: python raggy.py search \"your query\"")
+        except (PermissionError, OSError) as e:
+            log_warning("Could not create raggy_config_example.yaml", e, quiet=False)
+            return False
     
     return True
+
+
+def _print_setup_summary() -> None:
+    """Print summary of environment setup completion."""
+    print("✅ Environment setup complete!")
+    print("\nCreated files:")
+    print("- .venv/ (virtual environment)")
+    print("- pyproject.toml (project configuration)")
+    print("- raggy_config_example.yaml (example configuration)")
+    print("- docs/DEVELOPMENT_STATE.md (AI agent continuity tracking)")
+    print("\nNext steps:")
+    print("1. Add your documentation files to the docs/ directory")
+    print("2. Optional: Copy raggy_config_example.yaml to raggy_config.yaml and customize")
+    print("3. Run: python raggy.py build")
+    print("4. Run: python raggy.py search \"your query\"")
 
 
 def install_if_missing(packages: List[str], skip_cache: bool = False):
@@ -898,20 +1063,677 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False):
             )
 
 
+class DocumentProcessor:
+    """Handles file discovery, text extraction, and chunking operations."""
+    
+    def __init__(
+        self, 
+        docs_dir: Path, 
+        config: Dict[str, Any],
+        quiet: bool = False
+    ) -> None:
+        self.docs_dir = docs_dir
+        self.config = config
+        self.quiet = quiet
+        
+        # File type handlers (Strategy pattern)
+        self._file_handlers = {
+            ".pdf": self._extract_text_from_pdf,
+            ".md": self._extract_text_from_md,
+            ".docx": self._extract_text_from_docx,
+            ".txt": self._extract_text_from_txt,
+        }
+    
+    def find_documents(self) -> List[Path]:
+        """Find all supported documents in docs directory."""
+        if not self.docs_dir.exists():
+            if not self.quiet:
+                print(f"Creating docs directory: {self.docs_dir}")
+            self.docs_dir.mkdir(parents=True, exist_ok=True)
+            if not self.quiet:
+                print(f"Please add your documentation files to {self.docs_dir}")
+            return []
+
+        files = []
+        for pattern in GLOB_PATTERNS:
+            files.extend(self.docs_dir.glob(pattern))
+        
+        return sorted(files)
+    
+    def process_document(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Process a single document into chunks."""
+        if not self.quiet:
+            print(f"Processing: {file_path.relative_to(self.docs_dir)}")
+
+        # Validate file path for security
+        if not validate_path(file_path, self.docs_dir):
+            log_warning(f"Skipping file outside docs directory: {file_path.name}", quiet=self.quiet)
+            return []
+
+        # Check file size limits
+        try:
+            file_size = file_path.stat().st_size
+            if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
+                log_warning(f"Skipping large file (>{MAX_FILE_SIZE_MB}MB): {file_path.name}", quiet=self.quiet)
+                return []
+        except OSError:
+            log_warning(f"Could not check file size for {file_path.name}", quiet=self.quiet)
+            return []
+
+        try:
+            # Extract text using Strategy pattern
+            file_extension = file_path.suffix.lower()
+            handler = self._file_handlers.get(file_extension)
+            
+            if handler is None:
+                if not self.quiet:
+                    supported_types = ', '.join(self._file_handlers.keys())
+                    print(f"Skipping unsupported file type: {file_path.name}")
+                    print(f"Supported types: {supported_types}")
+                return []
+            
+            text = handler(file_path)
+
+            if not text.strip():
+                log_warning(f"No text extracted from {file_path.name}", quiet=self.quiet)
+                return []
+
+            # Generate chunks
+            chunk_data = self._chunk_text(text)
+
+            # Create document entries
+            documents = []
+            file_hash = self._get_file_hash(file_path)
+
+            for i, chunk_info in enumerate(chunk_data):
+                doc_id = f"{file_path.stem}_{file_hash[:8]}_{i}"
+
+                # Merge chunk metadata with file metadata
+                metadata = {
+                    "source": str(file_path.relative_to(self.docs_dir)),
+                    "chunk_index": i,
+                    "total_chunks": len(chunk_data),
+                    "file_hash": file_hash,
+                    "file_type": file_path.suffix.lower(),
+                }
+                metadata.update(chunk_info.get("metadata", {}))
+
+                documents.append(
+                    {"id": doc_id, "text": chunk_info["text"], "metadata": metadata}
+                )
+
+            return documents
+
+        except Exception as e:
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+    
+    def _get_file_hash(self, file_path: Path) -> str:
+        """Generate SHA256 hash of file for change detection using streaming for large files."""
+        hash_sha256 = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            # Read in chunks to handle large files efficiently
+            for chunk in iter(lambda: f.read(CHUNK_READ_SIZE), b""):
+                hash_sha256.update(chunk)
+        return hash_sha256.hexdigest()
+
+    def _extract_text_template(
+        self, file_path: Path, extraction_method: Callable[[Path], str]
+    ) -> str:
+        """Template method for text extraction with consistent error handling."""
+        try:
+            result = extraction_method(file_path)
+            return result.strip() if result else ""
+        except ImportError as e:
+            # Handle specific import errors (like missing python-docx)
+            library = str(e).split("'")[1] if "'" in str(e) else "dependency"
+            warning = f"Warning: {library} not available. Cannot read {file_path.name}"
+            print(warning)
+            return ""
+        except Exception as e:
+            sanitized_error = sanitize_error_message(str(e))
+            print(f"Warning: Could not extract text from {file_path.name}: {sanitized_error}")
+            return ""
+
+    def _extract_text_from_pdf(self, file_path: Path) -> str:
+        """Extract text from PDF file."""
+        return self._extract_text_template(file_path, self._extract_pdf_content)
+
+    def _extract_text_from_md(self, file_path: Path) -> str:
+        """Extract text from Markdown file."""
+        return self._extract_text_template(file_path, self._extract_md_content)
+
+    def _extract_text_from_docx(self, file_path: Path) -> str:
+        """Extract text from Word document (.docx)."""
+        return self._extract_text_template(file_path, self._extract_docx_content)
+
+    def _extract_text_from_txt(self, file_path: Path) -> str:
+        """Extract text from plain text file."""
+        return self._extract_text_template(file_path, self._extract_txt_content)
+
+    def _extract_pdf_content(self, file_path: Path) -> str:
+        """Extract content from PDF file."""
+        with open(file_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text.strip():
+                    text_parts.append(page_text)
+            return "\n".join(text_parts)
+
+    def _extract_md_content(self, file_path: Path) -> str:
+        """Extract content from Markdown file."""
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+
+    def _extract_docx_content(self, file_path: Path) -> str:
+        """Extract content from Word document."""
+        from docx import Document
+        
+        doc = Document(file_path)
+        text_parts = []
+        
+        # Extract paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text.strip())
+        
+        # Extract tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = []
+                for cell in row.cells:
+                    if cell.text.strip():
+                        row_text.append(cell.text.strip())
+                if row_text:
+                    text_parts.append(" | ".join(row_text))
+        
+        return "\n\n".join(text_parts)
+
+    def _extract_txt_content(self, file_path: Path) -> str:
+        """Extract content from plain text file with encoding fallback."""
+        # Try UTF-8 first
+        try:
+            with open(file_path, "r", encoding="utf-8") as file:
+                return file.read()
+        except UnicodeDecodeError:
+            # Fallback to latin-1 for older files
+            with open(file_path, "r", encoding="latin-1") as file:
+                return file.read()
+    
+    def _chunk_text(
+        self,
+        text: str,
+        chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
+        smart: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """Split text into overlapping chunks with optional smart chunking."""
+        chunk_size = chunk_size or self.config["search"].get("chunk_size", DEFAULT_CHUNK_SIZE)
+        overlap = overlap or self.config["search"].get("chunk_overlap", DEFAULT_CHUNK_OVERLAP)
+
+        if smart and self.config["chunking"]["smart"]:
+            return self._chunk_text_smart(text, chunk_size, overlap)
+        else:
+            return self._chunk_text_simple(text, chunk_size, overlap)
+
+    def _chunk_text_simple(
+        self, text: str, chunk_size: int, overlap: int
+    ) -> List[Dict[str, Any]]:
+        """Simple chunking for backward compatibility."""
+        if len(text) <= chunk_size:
+            return [{"text": text, "metadata": {"chunk_type": "simple"}}]
+
+        chunks = []
+        start = 0
+
+        while start < len(text):
+            end = start + chunk_size
+
+            # Try to break at sentence boundary
+            if end < len(text):
+                # Look for sentence endings near the chunk boundary
+                for i in range(end, max(start + chunk_size - 200, start), -1):
+                    if text[i] in ".!?\n":
+                        end = i + 1
+                        break
+
+            chunk_text = text[start:end].strip()
+            if chunk_text:
+                chunks.append(
+                    {"text": chunk_text, "metadata": {"chunk_type": "simple"}}
+                )
+
+            start = end - overlap
+
+        return chunks
+
+    def _chunk_text_smart(
+        self, text: str, base_chunk_size: int, overlap: int
+    ) -> List[Dict[str, Any]]:
+        """Smart chunking with markdown awareness."""
+        chunks = []
+
+        # Split by major sections first (headers)
+        sections = re.split(r"(^#{1,6}\s+.*$)", text, flags=re.MULTILINE)
+
+        current_header = None
+        current_content = ""
+
+        for section in sections:
+            if re.match(r"^#{1,6}\s+", section):
+                # Process previous section if exists
+                if current_content.strip():
+                    section_chunks = self._process_section(
+                        current_content, current_header, base_chunk_size, overlap
+                    )
+                    chunks.extend(section_chunks)
+
+                # Start new section
+                current_header = section.strip()
+                current_content = ""
+            else:
+                current_content += section
+
+        # Process final section
+        if current_content.strip():
+            section_chunks = self._process_section(
+                current_content, current_header, base_chunk_size, overlap
+            )
+            chunks.extend(section_chunks)
+
+        # If no headers found, fall back to simple chunking
+        if not chunks:
+            return self._chunk_text_simple(text, base_chunk_size, overlap)
+
+        return chunks
+
+    def _process_section(
+        self, content: str, header: Optional[str], chunk_size: int, overlap: int
+    ) -> List[Dict[str, Any]]:
+        """Process a section with its header."""
+        chunks = []
+        content = content.strip()
+
+        if not content:
+            return chunks
+
+        # Determine chunk size based on content type
+        lines = content.split("\n")
+        if any(line.strip().startswith(("-", "*", "1.")) for line in lines[:5]):
+            # List content - use smaller chunks
+            target_size = min(chunk_size, self.config["chunking"]["min_chunk_size"] * 2)
+        else:
+            # Regular content - use dynamic sizing
+            target_size = min(
+                max(len(content) // 3, self.config["chunking"]["min_chunk_size"]),
+                self.config["chunking"]["max_chunk_size"],
+            )
+
+        # Include header in first chunk if preserving headers
+        if header and self.config["chunking"]["preserve_headers"]:
+            content = f"{header}\n\n{content}"
+
+        # Split content into chunks
+        if len(content) <= target_size:
+            chunks.append(
+                {
+                    "text": content,
+                    "metadata": {
+                        "chunk_type": "smart",
+                        "section_header": header,
+                        "header_depth": len(re.findall(r"^#", header or "")),
+                    },
+                }
+            )
+        else:
+            start = 0
+            chunk_index = 0
+
+            while start < len(content):
+                end = start + target_size
+
+                # Try to break at paragraph or sentence boundary
+                if end < len(content):
+                    # Look for paragraph breaks first
+                    for i in range(end, max(start + target_size - 300, start), -1):
+                        if i > start and content[i - 2 : i] == "\n\n":
+                            end = i
+                            break
+                    else:
+                        # Fall back to sentence breaks
+                        for i in range(end, max(start + target_size - 200, start), -1):
+                            if content[i] in ".!?\n":
+                                end = i + 1
+                                break
+
+                chunk_text = content[start:end].strip()
+                if chunk_text:
+                    chunks.append(
+                        {
+                            "text": chunk_text,
+                            "metadata": {
+                                "chunk_type": "smart",
+                                "section_header": header,
+                                "header_depth": len(re.findall(r"^#", header or "")),
+                                "section_chunk_index": chunk_index,
+                            },
+                        }
+                    )
+                    chunk_index += 1
+
+                start = end - overlap
+
+        return chunks
+
+
+class DatabaseManager:
+    """Handles ChromaDB operations and collection management."""
+    
+    def __init__(
+        self,
+        db_dir: Path,
+        collection_name: str = "project_docs",
+        quiet: bool = False
+    ) -> None:
+        self.db_dir = db_dir
+        self.collection_name = collection_name
+        self.quiet = quiet
+        self._client = None
+    
+    @property
+    def client(self):
+        """Lazy-load ChromaDB client."""
+        if self._client is None:
+            self._client = chromadb.PersistentClient(path=str(self.db_dir))
+        return self._client
+    
+    def build_index(
+        self,
+        documents: List[Dict[str, Any]],
+        embeddings: Any,
+        force_rebuild: bool = False
+    ) -> None:
+        """Build or update the vector database."""
+        try:
+            if force_rebuild:
+                try:
+                    self.client.delete_collection(self.collection_name)
+                    if not self.quiet:
+                        print("Deleted existing collection")
+                except Exception:
+                    pass  # Collection may not exist
+
+            collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"description": "Project documentation embeddings"},
+            )
+            
+            # Add to ChromaDB
+            texts = [doc["text"] for doc in documents]
+            collection.add(
+                embeddings=embeddings.tolist(),
+                documents=texts,
+                metadatas=[doc["metadata"] for doc in documents],
+                ids=[doc["id"] for doc in documents],
+            )
+            
+        except Exception as e:
+            log_error("Failed to build index", e, quiet=self.quiet)
+            raise
+    
+    def get_collection(self):
+        """Get the collection for search operations."""
+        return self.client.get_collection(self.collection_name)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get database statistics."""
+        try:
+            collection = self.get_collection()
+            count = collection.count()
+
+            # Get source distribution
+            all_data = collection.get()
+            sources = {}
+            for meta in all_data["metadatas"]:
+                src = meta["source"]
+                sources[src] = sources.get(src, 0) + 1
+
+            return {
+                "total_chunks": count,
+                "sources": sources,
+                "db_path": str(self.db_dir),
+            }
+        except Exception:
+            return {
+                "error": "Database not found. Run 'python raggy.py build' first to index your documents."
+            }
+
+
+class SearchEngine:
+    """Handles semantic search, hybrid search, and scoring operations."""
+    
+    def __init__(
+        self,
+        database_manager: DatabaseManager,
+        query_processor: QueryProcessor,
+        config: Dict[str, Any],
+        quiet: bool = False
+    ) -> None:
+        self.database_manager = database_manager
+        self.query_processor = query_processor
+        self.config = config
+        self.quiet = quiet
+        self._bm25_scorer = None
+        self._documents_cache = None
+    
+    def search(
+        self,
+        query: str,
+        embedding_model: Any,
+        n_results: int = DEFAULT_RESULTS,
+        hybrid: bool = False,
+        expand_query: bool = False,
+        show_scores: bool = None,
+    ) -> List[Dict[str, Any]]:
+        """Search the vector database with enhanced capabilities."""
+        try:
+            collection = self.database_manager.get_collection()
+        except Exception:
+            log_error("Database collection not found - run 'python raggy.py build' first", quiet=self.quiet)
+            return []
+
+        try:
+            # Process query
+            if expand_query:
+                query_info = self.query_processor.process(query)
+                processed_query = query_info["processed"]
+            else:
+                query_info = {
+                    "original": query,
+                    "type": "keyword",
+                    "boost_exact": False,
+                }
+                processed_query = query
+
+            # Get semantic results
+            results = collection.query(
+                query_texts=[processed_query],
+                n_results=(
+                    n_results * 2 if hybrid else n_results
+                ),  # Get more for hybrid filtering
+            )
+
+            formatted_results = []
+
+            # Initialize BM25 scorer for hybrid search
+            if hybrid and self._bm25_scorer is None:
+                self._init_bm25_scorer(collection)
+
+            for i in range(len(results["documents"][0])):
+                distance = (
+                    results["distances"][0][i] if "distances" in results else None
+                )
+
+                # Normalize semantic similarity score
+                semantic_score = (
+                    normalize_cosine_distance(distance)
+                    if distance is not None
+                    else 0
+                )
+
+                # Calculate keyword score if using hybrid search
+                if hybrid and self._bm25_scorer:
+                    keyword_score = self._bm25_scorer.score(query, i)
+                    # Combine scores
+                    final_score = normalize_hybrid_score(
+                        semantic_score,
+                        keyword_score,
+                        self.config["search"]["hybrid_weight"],
+                    )
+                else:
+                    keyword_score = 0
+                    final_score = semantic_score
+
+                # Apply exact match boost
+                if (
+                    query_info.get("boost_exact")
+                    and query.lower() in results["documents"][0][i].lower()
+                ):
+                    final_score = min(1.0, final_score * 1.5)
+
+                formatted_results.append(
+                    {
+                        "text": results["documents"][0][i],
+                        "metadata": results["metadatas"][0][i],
+                        "semantic_score": semantic_score,
+                        "keyword_score": keyword_score,
+                        "final_score": final_score,
+                        "score_interpretation": interpret_score(final_score),
+                        "distance": distance,  # Keep for backward compatibility
+                        "similarity": final_score,  # Keep for backward compatibility
+                    }
+                )
+
+            # Sort by final score and limit results
+            formatted_results.sort(key=lambda x: x["final_score"], reverse=True)
+            formatted_results = formatted_results[:n_results]
+
+            # Rerank results if enabled
+            if self.config["search"]["rerank"]:
+                formatted_results = self._rerank_results(query, formatted_results)
+
+            # Add highlighting if requested
+            show_scores = (
+                show_scores
+                if show_scores is not None
+                else self.config["search"]["show_scores"]
+            )
+            if show_scores:
+                for result in formatted_results:
+                    result["highlighted_text"] = self._highlight_matches(
+                        query, result["text"]
+                    )
+
+            return formatted_results
+
+        except Exception as e:
+            log_error("Search error", e, quiet=self.quiet)
+            return []
+
+    def _init_bm25_scorer(self, collection):
+        """Initialize BM25 scorer with collection documents."""
+        if self._documents_cache is None:
+            # Get all documents from collection
+            all_data = collection.get()
+            self._documents_cache = all_data["documents"]
+
+        self._bm25_scorer = BM25Scorer()
+        self._bm25_scorer.fit(self._documents_cache)
+
+    def _rerank_results(
+        self, query: str, results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Rerank results to improve diversity and relevance."""
+        if len(results) <= 2:
+            return results
+
+        reranked = []
+        used_sources = set()
+
+        # First pass: take best result from each source
+        for result in results:
+            source = result["metadata"]["source"]
+            if source not in used_sources:
+                reranked.append(result)
+                used_sources.add(source)
+                if len(reranked) >= len(results) // 2:
+                    break
+
+        # Second pass: add remaining results
+        for result in results:
+            if result not in reranked:
+                reranked.append(result)
+
+        return reranked[: len(results)]
+
+    def _highlight_matches(
+        self, query: str, text: str, context_chars: int = None
+    ) -> str:
+        """Highlight matching terms in text."""
+        context_chars = context_chars or self.config["search"]["context_chars"]
+
+        # Simple highlighting - find first match and show context
+        query_terms = re.findall(r"\b\w+\b", query.lower())
+        text_lower = text.lower()
+
+        # Find first match position
+        match_pos = -1
+        for term in query_terms:
+            pos = text_lower.find(term)
+            if pos != -1:
+                match_pos = pos
+                break
+
+        if match_pos == -1:
+            # No direct match, return beginning
+            return text[:context_chars] + "..." if len(text) > context_chars else text
+
+        # Calculate context window around match
+        start = max(0, match_pos - context_chars // 2)
+        end = min(len(text), match_pos + context_chars // 2)
+
+        # Extend to word boundaries
+        while start > 0 and text[start] != " ":
+            start -= 1
+        while end < len(text) and text[end] != " ":
+            end += 1
+
+        excerpt = text[start:end].strip()
+        if start > 0:
+            excerpt = "..." + excerpt
+        if end < len(text):
+            excerpt = excerpt + "..."
+
+        return excerpt
+
+
 class UniversalRAG:
+    """Main orchestrator for the RAG system."""
+    
     def __init__(
         self,
         docs_dir: str = "./docs",
         db_dir: str = "./vectordb",
-        model_name: str = "all-MiniLM-L6-v2",
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
+        model_name: str = DEFAULT_MODEL,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
         quiet: bool = False,
         config_path: Optional[str] = None,
     ) -> None:
         self.docs_dir = Path(docs_dir)
         self.db_dir = Path(db_dir)
-        self.collection_name = "project_docs"
         self.model_name = model_name
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -920,33 +1742,158 @@ class UniversalRAG:
         # Load configuration
         self.config = load_config(config_path)
 
-        # Initialize processors
+        # Initialize components
+        self.document_processor = DocumentProcessor(
+            self.docs_dir, self.config, quiet=self.quiet
+        )
+        self.database_manager = DatabaseManager(
+            self.db_dir, quiet=self.quiet
+        )
         self.query_processor = QueryProcessor(
             self.config["search"].get("expansions", {})
         )
-        self.scoring = ScoringNormalizer()
+        self.search_engine = SearchEngine(
+            self.database_manager,
+            self.query_processor,
+            self.config,
+            quiet=self.quiet
+        )
 
         # Lazy-loaded attributes
-        self._client = None
         self._embedding_model = None
-        self._bm25_scorer = None
-        self._documents_cache = None
-
-    @property
-    def client(self):
-        """Lazy-load ChromaDB client"""
-        if self._client is None:
-            self._client = chromadb.PersistentClient(path=str(self.db_dir))
-        return self._client
 
     @property
     def embedding_model(self):
-        """Lazy-load embedding model"""
+        """Lazy-load embedding model."""
         if self._embedding_model is None:
             if not self.quiet:
                 print(f"Loading embedding model ({self.model_name})...")
             self._embedding_model = SentenceTransformer(self.model_name)
         return self._embedding_model
+
+    def build(self, force_rebuild: bool = False) -> None:
+        """Build or update the vector database."""
+        start_time = time.time()
+
+        # Find documents
+        files = self.document_processor.find_documents()
+        if not files:
+            log_error("No documents found in docs/ directory", quiet=self.quiet)
+            if not self.quiet:
+                print("Solution: Add supported files to the docs/ directory")
+                print("Supported formats: .md, .pdf, .docx, .txt")
+                print("Example: docs/readme.md, docs/guide.pdf, docs/manual.docx, docs/notes.txt")
+            return
+
+        if not self.quiet:
+            print(f"Found {len(files)} documents")
+
+        # Process each document
+        all_documents = []
+        for i, file_path in enumerate(files, 1):
+            if not self.quiet:
+                print(f"[{i}/{len(files)}] Processing {file_path.name}...")
+            docs = self.document_processor.process_document(file_path)
+            all_documents.extend(docs)
+
+        if not all_documents:
+            log_error("No content could be extracted from documents", quiet=self.quiet)
+            if not self.quiet:
+                print("This could mean:")
+                print("- PDF files are corrupted or password-protected")
+                print("- Word documents (.docx) are corrupted")
+                print("- Text files are empty or have encoding issues")
+                print("- Markdown files are empty")
+                print("- Files are not readable")
+                print("Check your files and try again.")
+            return
+
+        if not self.quiet:
+            print(f"Generated {len(all_documents)} text chunks")
+            print("Generating embeddings...")
+
+        # Generate embeddings
+        texts = [doc["text"] for doc in all_documents]
+        embeddings = self.embedding_model.encode(
+            texts, show_progress_bar=not self.quiet
+        )
+
+        # Build index
+        self.database_manager.build_index(
+            all_documents, embeddings, force_rebuild=force_rebuild
+        )
+
+        elapsed = time.time() - start_time
+        print(
+            f"{SYMBOLS['success']} Successfully indexed {len(all_documents)} chunks from {len(files)} files"
+        )
+        print(f"Database saved to: {self.db_dir}")
+        if not self.quiet:
+            print(f"Build completed in {elapsed:.1f} seconds")
+    
+    def search(
+        self,
+        query: str,
+        n_results: int = DEFAULT_RESULTS,
+        hybrid: bool = False,
+        expand_query: bool = False,
+        show_scores: bool = None,
+    ) -> List[Dict[str, Any]]:
+        """Search the vector database with enhanced capabilities."""
+        return self.search_engine.search(
+            query, 
+            self.embedding_model,
+            n_results, 
+            hybrid, 
+            expand_query, 
+            show_scores
+        )
+    
+    def interactive_search(self) -> None:
+        """Interactive search mode."""
+        print(f"\n{SYMBOLS['search']} Interactive Search Mode")
+        print("Type your queries (or 'quit' to exit)")
+        print("-" * 50)
+
+        while True:
+            try:
+                query = input("\nQuery: ").strip()
+                if query.lower() in ["quit", "exit", "q"]:
+                    break
+
+                if not query:
+                    continue
+
+                start_time = time.time()
+                results = self.search(query)
+                elapsed = time.time() - start_time
+
+                if not results:
+                    print("No results found.")
+                    continue
+
+                print(
+                    f"\n{SYMBOLS['found']} Found {len(results)} results (in {elapsed:.3f}s):"
+                )
+                for i, result in enumerate(results, 1):
+                    print(f"\n--- Result {i} ---")
+                    print(f"Source: {result['metadata']['source']}")
+                    print(
+                        f"Chunk: {result['metadata']['chunk_index'] + 1}/{result['metadata']['total_chunks']}"
+                    )
+                    if result["similarity"]:
+                        print(f"Similarity: {result['similarity']:.3f}")
+                    print(f"Text preview: {result['text'][:200]}...")
+
+            except KeyboardInterrupt:
+                break
+
+        print(f"\n{SYMBOLS['bye']} Goodbye!")
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get database statistics."""
+        return self.database_manager.get_stats()
+
 
     def _get_file_hash(self, file_path: Path) -> str:
         """Generate SHA256 hash of file for change detection using streaming for large files"""
@@ -957,77 +1904,90 @@ class UniversalRAG:
                 hash_sha256.update(chunk)
         return hash_sha256.hexdigest()
 
-    def _extract_text_from_pdf(self, file_path: Path) -> str:
-        """Extract text from PDF file"""
+    def _extract_text_template(
+        self, file_path: Path, extraction_method: Callable[[Path], str]
+    ) -> str:
+        """Template method for text extraction with consistent error handling."""
         try:
-            with open(file_path, "rb") as file:
-                reader = PyPDF2.PdfReader(file)
-                text = ""
-                for page in reader.pages:
-                    text += page.extract_text() + "\n"
-                return text.strip()
-        except Exception as e:
-            print(f"Warning: Could not extract text from {file_path}: {e}")
+            result = extraction_method(file_path)
+            return result.strip() if result else ""
+        except ImportError as e:
+            # Handle specific import errors (like missing python-docx)
+            library = str(e).split("'")[1] if "'" in str(e) else "dependency"
+            warning = f"Warning: {library} not available. Cannot read {file_path.name}"
+            print(warning)
             return ""
+        except Exception as e:
+            sanitized_error = sanitize_error_message(str(e))
+            print(f"Warning: Could not extract text from {file_path.name}: {sanitized_error}")
+            return ""
+
+    def _extract_text_from_pdf(self, file_path: Path) -> str:
+        """Extract text from PDF file."""
+        return self._extract_text_template(file_path, self._extract_pdf_content)
 
     def _extract_text_from_md(self, file_path: Path) -> str:
-        """Extract text from Markdown file"""
-        try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                return file.read()
-        except Exception as e:
-            print(f"Warning: Could not read {file_path}: {e}")
-            return ""
+        """Extract text from Markdown file."""
+        return self._extract_text_template(file_path, self._extract_md_content)
 
     def _extract_text_from_docx(self, file_path: Path) -> str:
-        """Extract text from Word document (.docx)"""
-        try:
-            from docx import Document
-            
-            doc = Document(file_path)
-            text_parts = []
-            
-            # Extract paragraphs
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    text_parts.append(paragraph.text.strip())
-            
-            # Extract tables
-            for table in doc.tables:
-                for row in table.rows:
-                    row_text = []
-                    for cell in row.cells:
-                        if cell.text.strip():
-                            row_text.append(cell.text.strip())
-                    if row_text:
-                        text_parts.append(" | ".join(row_text))
-            
-            return "\n\n".join(text_parts)
-            
-        except ImportError:
-            print(f"Warning: python-docx not available. Cannot read {file_path}")
-            return ""
-        except Exception as e:
-            print(f"Warning: Could not extract text from {file_path}: {e}")
-            return ""
+        """Extract text from Word document (.docx)."""
+        return self._extract_text_template(file_path, self._extract_docx_content)
 
     def _extract_text_from_txt(self, file_path: Path) -> str:
-        """Extract text from plain text file"""
+        """Extract text from plain text file."""
+        return self._extract_text_template(file_path, self._extract_txt_content)
+
+    def _extract_pdf_content(self, file_path: Path) -> str:
+        """Extract content from PDF file."""
+        with open(file_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text.strip():
+                    text_parts.append(page_text)
+            return "\n".join(text_parts)
+
+    def _extract_md_content(self, file_path: Path) -> str:
+        """Extract content from Markdown file."""
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+
+    def _extract_docx_content(self, file_path: Path) -> str:
+        """Extract content from Word document."""
+        from docx import Document
+        
+        doc = Document(file_path)
+        text_parts = []
+        
+        # Extract paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text.strip())
+        
+        # Extract tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = []
+                for cell in row.cells:
+                    if cell.text.strip():
+                        row_text.append(cell.text.strip())
+                if row_text:
+                    text_parts.append(" | ".join(row_text))
+        
+        return "\n\n".join(text_parts)
+
+    def _extract_txt_content(self, file_path: Path) -> str:
+        """Extract content from plain text file with encoding fallback."""
+        # Try UTF-8 first
         try:
-            # Try UTF-8 first
             with open(file_path, "r", encoding="utf-8") as file:
                 return file.read()
         except UnicodeDecodeError:
-            try:
-                # Fallback to latin-1 for older files
-                with open(file_path, "r", encoding="latin-1") as file:
-                    return file.read()
-            except Exception as e:
-                print(f"Warning: Could not read {file_path} with any encoding: {e}")
-                return ""
-        except Exception as e:
-            print(f"Warning: Could not read {file_path}: {e}")
-            return ""
+            # Fallback to latin-1 for older files
+            with open(file_path, "r", encoding="latin-1") as file:
+                return file.read()
 
     def _chunk_text(
         self,
@@ -1231,19 +2191,18 @@ class UniversalRAG:
             return []
 
         try:
-            # Extract text based on file type
-            if file_path.suffix.lower() == ".pdf":
-                text = self._extract_text_from_pdf(file_path)
-            elif file_path.suffix.lower() == ".md":
-                text = self._extract_text_from_md(file_path)
-            elif file_path.suffix.lower() == ".docx":
-                text = self._extract_text_from_docx(file_path)
-            elif file_path.suffix.lower() == ".txt":
-                text = self._extract_text_from_txt(file_path)
-            else:
+            # Extract text using Strategy pattern
+            file_extension = file_path.suffix.lower()
+            handler = self._file_handlers.get(file_extension)
+            
+            if handler is None:
                 if not self.quiet:
-                    print(f"Skipping unsupported file type: {file_path}")
+                    supported_types = ', '.join(self._file_handlers.keys())
+                    print(f"Skipping unsupported file type: {file_path.name}")
+                    print(f"Supported types: {supported_types}")
                 return []
+            
+            text = handler(file_path)
 
             if not text.strip():
                 if not self.quiet:
@@ -1359,263 +2318,6 @@ class UniversalRAG:
         if not self.quiet:
             print(f"Build completed in {elapsed:.1f} seconds")
 
-    def search(
-        self,
-        query: str,
-        n_results: int = 5,
-        hybrid: bool = False,
-        expand_query: bool = False,
-        show_scores: bool = None,
-    ) -> List[Dict[str, Any]]:
-        """Search the vector database with enhanced capabilities"""
-        try:
-            collection = self.client.get_collection(self.collection_name)
-        except Exception as e:
-            print("ERROR: Database collection not found.")
-            print("This usually means you haven't indexed any documents yet.")
-            print(f"Solution: Run 'python {sys.argv[0]} build' first")
-            if not Path("docs").exists():
-                print("Note: You'll also need to create a 'docs/' directory and add .md or .pdf files")
-            return []
-
-        try:
-            # Process query
-            if expand_query:
-                query_info = self.query_processor.process(query)
-                processed_query = query_info["processed"]
-            else:
-                query_info = {
-                    "original": query,
-                    "type": "keyword",
-                    "boost_exact": False,
-                }
-                processed_query = query
-
-            # Get semantic results
-            results = collection.query(
-                query_texts=[processed_query],
-                n_results=(
-                    n_results * 2 if hybrid else n_results
-                ),  # Get more for hybrid filtering
-            )
-
-            formatted_results = []
-
-            # Initialize BM25 scorer for hybrid search
-            if hybrid and self._bm25_scorer is None:
-                self._init_bm25_scorer(collection)
-
-            for i in range(len(results["documents"][0])):
-                distance = (
-                    results["distances"][0][i] if "distances" in results else None
-                )
-
-                # Normalize semantic similarity score
-                semantic_score = (
-                    self.scoring.normalize_cosine_distance(distance)
-                    if distance is not None
-                    else 0
-                )
-
-                # Calculate keyword score if using hybrid search
-                if hybrid and self._bm25_scorer:
-                    keyword_score = self._bm25_scorer.score(query, i)
-                    # Combine scores
-                    final_score = self.scoring.normalize_hybrid_score(
-                        semantic_score,
-                        keyword_score,
-                        self.config["search"]["hybrid_weight"],
-                    )
-                else:
-                    keyword_score = 0
-                    final_score = semantic_score
-
-                # Apply exact match boost
-                if (
-                    query_info.get("boost_exact")
-                    and query.lower() in results["documents"][0][i].lower()
-                ):
-                    final_score = min(1.0, final_score * 1.5)
-
-                formatted_results.append(
-                    {
-                        "text": results["documents"][0][i],
-                        "metadata": results["metadatas"][0][i],
-                        "semantic_score": semantic_score,
-                        "keyword_score": keyword_score,
-                        "final_score": final_score,
-                        "score_interpretation": self.scoring.interpret_score(
-                            final_score
-                        ),
-                        "distance": distance,  # Keep for backward compatibility
-                        "similarity": final_score,  # Keep for backward compatibility
-                    }
-                )
-
-            # Sort by final score and limit results
-            formatted_results.sort(key=lambda x: x["final_score"], reverse=True)
-            formatted_results = formatted_results[:n_results]
-
-            # Rerank results if enabled
-            if self.config["search"]["rerank"]:
-                formatted_results = self._rerank_results(query, formatted_results)
-
-            # Add highlighting if requested
-            show_scores = (
-                show_scores
-                if show_scores is not None
-                else self.config["search"]["show_scores"]
-            )
-            if show_scores:
-                for result in formatted_results:
-                    result["highlighted_text"] = self._highlight_matches(
-                        query, result["text"]
-                    )
-
-            return formatted_results
-
-        except Exception as e:
-            print(f"Search error: {e}")
-            return []
-
-    def _init_bm25_scorer(self, collection):
-        """Initialize BM25 scorer with collection documents"""
-        if self._documents_cache is None:
-            # Get all documents from collection
-            all_data = collection.get()
-            self._documents_cache = all_data["documents"]
-
-        self._bm25_scorer = BM25Scorer()
-        self._bm25_scorer.fit(self._documents_cache)
-
-    def _rerank_results(
-        self, query: str, results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Rerank results to improve diversity and relevance"""
-        if len(results) <= 2:
-            return results
-
-        reranked = []
-        used_sources = set()
-
-        # First pass: take best result from each source
-        for result in results:
-            source = result["metadata"]["source"]
-            if source not in used_sources:
-                reranked.append(result)
-                used_sources.add(source)
-                if len(reranked) >= len(results) // 2:
-                    break
-
-        # Second pass: add remaining results
-        for result in results:
-            if result not in reranked:
-                reranked.append(result)
-
-        return reranked[: len(results)]
-
-    def _highlight_matches(
-        self, query: str, text: str, context_chars: int = None
-    ) -> str:
-        """Highlight matching terms in text"""
-        context_chars = context_chars or self.config["search"]["context_chars"]
-
-        # Simple highlighting - find first match and show context
-        query_terms = re.findall(r"\b\w+\b", query.lower())
-        text_lower = text.lower()
-
-        # Find first match position
-        match_pos = -1
-        for term in query_terms:
-            pos = text_lower.find(term)
-            if pos != -1:
-                match_pos = pos
-                break
-
-        if match_pos == -1:
-            # No direct match, return beginning
-            return text[:context_chars] + "..." if len(text) > context_chars else text
-
-        # Calculate context window around match
-        start = max(0, match_pos - context_chars // 2)
-        end = min(len(text), match_pos + context_chars // 2)
-
-        # Extend to word boundaries
-        while start > 0 and text[start] != " ":
-            start -= 1
-        while end < len(text) and text[end] != " ":
-            end += 1
-
-        excerpt = text[start:end].strip()
-        if start > 0:
-            excerpt = "..." + excerpt
-        if end < len(text):
-            excerpt = excerpt + "..."
-
-        return excerpt
-
-    def get_stats(self) -> Dict[str, Any]:
-        """Get database statistics"""
-        try:
-            collection = self.client.get_collection(self.collection_name)
-            count = collection.count()
-
-            # Get source distribution
-            all_data = collection.get()
-            sources = {}
-            for meta in all_data["metadatas"]:
-                src = meta["source"]
-                sources[src] = sources.get(src, 0) + 1
-
-            return {
-                "total_chunks": count,
-                "sources": sources,
-                "db_path": str(self.db_dir),
-            }
-        except Exception as e:
-            return {"error": "Database not found. Run 'python raggy.py build' first to index your documents."}
-
-    def interactive_search(self) -> None:
-        """Interactive search mode"""
-        print(f"\n{SYMBOLS['search']} Interactive Search Mode")
-        print("Type your queries (or 'quit' to exit)")
-        print("-" * 50)
-
-        while True:
-            try:
-                query = input("\nQuery: ").strip()
-                if query.lower() in ["quit", "exit", "q"]:
-                    break
-
-                if not query:
-                    continue
-
-                start_time = time.time()
-                results = self.search(query)
-                elapsed = time.time() - start_time
-
-                if not results:
-                    print("No results found.")
-                    continue
-
-                print(
-                    f"\n{SYMBOLS['found']} Found {len(results)} results (in {elapsed:.3f}s):"
-                )
-                for i, result in enumerate(results, 1):
-                    print(f"\n--- Result {i} ---")
-                    print(f"Source: {result['metadata']['source']}")
-                    print(
-                        f"Chunk: {result['metadata']['chunk_index'] + 1}/{result['metadata']['total_chunks']}"
-                    )
-                    if result["similarity"]:
-                        print(f"Similarity: {result['similarity']:.3f}")
-                    print(f"Text preview: {result['text'][:200]}...")
-
-            except KeyboardInterrupt:
-                break
-
-        print(f"\n{SYMBOLS['bye']} Goodbye!")
-
     def run_self_tests(self) -> bool:
         """Run built-in self-tests for raggy functionality"""
         print(f"\n{SYMBOLS['search']} Running raggy self-tests...")
@@ -1670,8 +2372,8 @@ class UniversalRAG:
         # Test 4: Scoring normalizer
         try:
             print("Testing scoring normalizer...")
-            score = ScoringNormalizer.normalize_cosine_distance(0.5)
-            interpretation = ScoringNormalizer.interpret_score(0.7)
+            score = normalize_cosine_distance(0.5)
+            interpretation = interpret_score(0.7)
             if 0 <= score <= 1 and interpretation == "Good":
                 print("✓ Scoring normalizer working correctly")
                 tests_passed += 1
@@ -1937,82 +2639,40 @@ Examples:
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
+# Command Pattern Implementation
+class Command:
+    """Base command interface."""
+    
+    def execute(self, args: Any, rag: Optional[UniversalRAG] = None) -> None:
+        """Execute the command."""
+        raise NotImplementedError
 
-    # Check for updates early (non-intrusive, once per session)
-    # Do this before expensive operations but after arg parsing
-    try:
-        # Load config to get update settings
-        config = load_config(args.config) if hasattr(args, 'config') else {}
-        check_for_updates(quiet=args.quiet, config=config)
-    except Exception:
-        pass  # Silently fail - don't interrupt user workflow
 
-    # Handle init command before dependency setup
-    if args.command == "init":
+class InitCommand(Command):
+    """Initialize project environment."""
+    
+    def execute(self, args: Any, rag: Optional[UniversalRAG] = None) -> None:
         success = setup_environment(quiet=args.quiet)
         if not success:
             sys.exit(1)
-        return
 
-    # Setup dependencies (unless skipped)
-    if not args.skip_deps:
-        setup_dependencies(quiet=args.quiet)
-    else:
-        # Still need to import even if skipping dependency checks
-        try:
-            global chromadb, SentenceTransformer, PyPDF2, HAS_MAGIC, magic
-            import chromadb
-            from sentence_transformers import SentenceTransformer
-            import PyPDF2
 
-            try:
-                import magic
+class BuildCommand(Command):
+    """Build or rebuild the vector database."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
+        force_rebuild = hasattr(args, 'force_rebuild') and args.force_rebuild
+        if hasattr(args, 'command') and args.command == 'rebuild':
+            force_rebuild = True
+        rag.build(force_rebuild=force_rebuild)
 
-                HAS_MAGIC = True
-            except ImportError:
-                HAS_MAGIC = False
-        except ImportError as e:
-            print(f"Missing dependency: {e}")
-            print("Run without --skip-deps or install dependencies manually")
-            return
 
-    # Determine model to use
-    if args.model_preset:
-        # Load config to get model presets
-        config = load_config(args.config)
-        if args.model_preset == "fast":
-            model_name = config["models"]["fast"]
-        elif args.model_preset == "multilingual":
-            model_name = config["models"]["multilingual"]
-        elif args.model_preset == "accurate":
-            model_name = config["models"]["accurate"]
-        else:  # balanced
-            model_name = config["models"]["default"]
-    else:
-        # Use fast model if requested, otherwise use specified model
-        model_name = "paraphrase-MiniLM-L3-v2" if args.fast else args.model
-
-    # Initialize RAG with configuration
-    rag = UniversalRAG(
-        docs_dir=args.docs_dir,
-        db_dir=args.db_dir,
-        model_name=model_name,
-        chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap,
-        quiet=args.quiet,
-        config_path=args.config,
-    )
-
-    # Execute command
-    if args.command == "build":
-        rag.build()
-    elif args.command == "rebuild":
-        rag.build(force_rebuild=True)
-    elif args.command == "search":
+class SearchCommand(Command):
+    """Search the vector database."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         if not args.query:
-            print("Please provide a search query")
+            log_error("Please provide a search query", quiet=args.quiet)
             return
 
         query = " ".join(args.query)
@@ -2065,9 +2725,18 @@ def main() -> None:
                 )
                 print(f"   {display_text}")
 
-    elif args.command == "interactive":
+
+class InteractiveCommand(Command):
+    """Interactive search mode."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         rag.interactive_search()
-    elif args.command == "status":
+
+
+class StatusCommand(Command):
+    """Show database status and statistics."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         stats = rag.get_stats()
         if "error" in stats:
             print(f"Error getting stats: {stats['error']}")
@@ -2080,7 +2749,12 @@ def main() -> None:
             print(f"  Documents:")
             for source, count in sorted(stats["sources"].items()):
                 print(f"    {source}: {count} chunks")
-    elif args.command == "optimize":
+
+
+class OptimizeCommand(Command):
+    """Benchmark and optimize search settings."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         print(
             f"\n{SYMBOLS['search']} Running benchmark queries to optimize settings..."
         )
@@ -2163,16 +2837,136 @@ def main() -> None:
         print(
             f'  python {sys.argv[0]} search \\"your query\\" --expand    # For broader results'
         )
-    elif args.command == "test":
+
+
+class TestCommand(Command):
+    """Run built-in self-tests."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         success = rag.run_self_tests()
         if not success:
             sys.exit(1)
-    elif args.command == "diagnose":
+
+
+class DiagnoseCommand(Command):
+    """Diagnose system setup and dependencies."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         rag.diagnose_system()
-    elif args.command == "validate":
+
+
+class ValidateCommand(Command):
+    """Validate configuration and setup."""
+    
+    def execute(self, args: Any, rag: UniversalRAG) -> None:
         success = rag.validate_configuration()
         if not success:
             sys.exit(1)
+
+
+class CommandFactory:
+    """Factory for creating command instances."""
+    
+    _commands = {
+        "init": InitCommand,
+        "build": BuildCommand,
+        "rebuild": BuildCommand,
+        "search": SearchCommand,
+        "interactive": InteractiveCommand,
+        "status": StatusCommand,
+        "optimize": OptimizeCommand,
+        "test": TestCommand,
+        "diagnose": DiagnoseCommand,
+        "validate": ValidateCommand,
+    }
+    
+    @classmethod
+    def create_command(cls, command_name: str) -> Command:
+        """Create a command instance."""
+        command_class = cls._commands.get(command_name)
+        if command_class is None:
+            raise ValueError(f"Unknown command: {command_name}")
+        return command_class()
+
+
+def main() -> None:
+    """Main entry point using Command pattern."""
+    args = parse_args()
+
+    # Check for updates early (non-intrusive, once per session)
+    try:
+        config = load_config(args.config) if hasattr(args, 'config') else {}
+        check_for_updates(quiet=args.quiet, config=config)
+    except Exception:
+        pass  # Silently fail - don't interrupt user workflow
+
+    # Create and execute command
+    try:
+        command = CommandFactory.create_command(args.command)
+        
+        # Handle init command specially (no RAG instance needed)
+        if args.command == "init":
+            command.execute(args)
+            return
+
+        # Setup dependencies for other commands
+        if not args.skip_deps:
+            setup_dependencies(quiet=args.quiet)
+        else:
+            # Still need to import even if skipping dependency checks
+            try:
+                global chromadb, SentenceTransformer, PyPDF2, HAS_MAGIC, magic
+                import chromadb
+                from sentence_transformers import SentenceTransformer
+                import PyPDF2
+
+                try:
+                    import magic
+                    HAS_MAGIC = True
+                except ImportError:
+                    HAS_MAGIC = False
+            except ImportError as e:
+                log_error(f"Missing dependency: {e}", quiet=args.quiet)
+                log_error("Run without --skip-deps or install dependencies manually", quiet=args.quiet)
+                return
+
+        # Determine model to use
+        model_name = _determine_model(args)
+
+        # Initialize RAG system
+        rag = UniversalRAG(
+            docs_dir=args.docs_dir,
+            db_dir=args.db_dir,
+            model_name=model_name,
+            chunk_size=args.chunk_size,
+            chunk_overlap=args.chunk_overlap,
+            quiet=args.quiet,
+            config_path=args.config,
+        )
+
+        # Execute the command
+        command.execute(args, rag)
+        
+    except ValueError as e:
+        log_error(str(e), quiet=args.quiet)
+        sys.exit(1)
+    except Exception as e:
+        log_error(f"Unexpected error executing command '{args.command}'", e, quiet=args.quiet)
+        sys.exit(1)
+
+
+def _determine_model(args: Any) -> str:
+    """Determine which model to use based on arguments."""
+    if args.model_preset:
+        config = load_config(args.config)
+        preset_models = {
+            "fast": config["models"]["fast"],
+            "multilingual": config["models"]["multilingual"],
+            "accurate": config["models"]["accurate"],
+        }
+        return preset_models.get(args.model_preset, config["models"]["default"])
+    else:
+        return FAST_MODEL if args.fast else args.model
 
 
 if __name__ == "__main__":
