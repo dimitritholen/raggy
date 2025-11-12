@@ -5,7 +5,12 @@ import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from raggy import UniversalRAG, ScoringNormalizer
+from raggy import (
+    UniversalRAG,
+    normalize_cosine_distance,
+    normalize_hybrid_score,
+    interpret_score
+)
 
 
 class TestUniversalRAG:
@@ -140,35 +145,36 @@ class TestUniversalRAG:
     
     def test_scoring_normalizer_initialization(self, rag_instance):
         """Test that scoring normalizer is initialized."""
-        assert isinstance(rag_instance.scoring, ScoringNormalizer)
+        # ScoringNormalizer is now module-level functions, not a class
+        # This test is no longer applicable - removed assertion
 
 
 class TestScoringNormalizer:
-    """Test the ScoringNormalizer class."""
-    
+    """Test the scoring normalization functions."""
+
     def test_normalize_cosine_distance(self):
         """Test cosine distance normalization."""
         # Distance 0 should give similarity 1
-        assert ScoringNormalizer.normalize_cosine_distance(0) == 1.0
-        
-        # Distance 2 should give similarity 0  
-        assert ScoringNormalizer.normalize_cosine_distance(2) == 0.0
-        
+        assert normalize_cosine_distance(0) == 1.0
+
+        # Distance 2 should give similarity 0
+        assert normalize_cosine_distance(2) == 0.0
+
         # Distance 1 should give similarity 0.5
-        assert ScoringNormalizer.normalize_cosine_distance(1) == 0.5
-        
+        assert normalize_cosine_distance(1) == 0.5
+
         # Test boundary conditions
-        assert ScoringNormalizer.normalize_cosine_distance(-0.1) == 1.0  # Clamped to 1
-        assert ScoringNormalizer.normalize_cosine_distance(2.1) == 0.0   # Clamped to 0
+        assert normalize_cosine_distance(-0.1) == 1.0  # Clamped to 1
+        assert normalize_cosine_distance(2.1) == 0.0   # Clamped to 0
     
     def test_normalize_hybrid_score(self):
         """Test hybrid score normalization."""
         # Test with default semantic weight (0.7)
         semantic_score = 0.8
         keyword_score = 5.0  # Will be normalized to 0.5
-        
-        result = ScoringNormalizer.normalize_hybrid_score(semantic_score, keyword_score)
-        
+
+        result = normalize_hybrid_score(semantic_score, keyword_score)
+
         expected = 0.7 * 0.8 + 0.3 * 0.5  # 0.56 + 0.15 = 0.71
         assert abs(result - expected) < 1e-6
     
@@ -177,39 +183,39 @@ class TestScoringNormalizer:
         semantic_score = 0.6
         keyword_score = 10.0  # Will be normalized to 1.0
         semantic_weight = 0.5
-        
-        result = ScoringNormalizer.normalize_hybrid_score(
+
+        result = normalize_hybrid_score(
             semantic_score, keyword_score, semantic_weight
         )
-        
+
         expected = 0.5 * 0.6 + 0.5 * 1.0  # 0.3 + 0.5 = 0.8
         assert abs(result - expected) < 1e-6
     
     def test_interpret_score(self):
         """Test score interpretation."""
-        assert ScoringNormalizer.interpret_score(0.9) == "Excellent"
-        assert ScoringNormalizer.interpret_score(0.8) == "Excellent"
-        assert ScoringNormalizer.interpret_score(0.7) == "Good"
-        assert ScoringNormalizer.interpret_score(0.6) == "Good"
-        assert ScoringNormalizer.interpret_score(0.5) == "Fair"
-        assert ScoringNormalizer.interpret_score(0.4) == "Fair"
-        assert ScoringNormalizer.interpret_score(0.3) == "Poor"
-        assert ScoringNormalizer.interpret_score(0.1) == "Poor"
+        assert interpret_score(0.9) == "Excellent"
+        assert interpret_score(0.8) == "Excellent"
+        assert interpret_score(0.7) == "Good"
+        assert interpret_score(0.6) == "Good"
+        assert interpret_score(0.5) == "Fair"
+        assert interpret_score(0.4) == "Fair"
+        assert interpret_score(0.3) == "Poor"
+        assert interpret_score(0.1) == "Poor"
     
     def test_interpret_score_boundary_conditions(self):
         """Test score interpretation at boundaries."""
         # Test exact boundary values
-        assert ScoringNormalizer.interpret_score(0.8) == "Excellent"
-        assert ScoringNormalizer.interpret_score(0.79999) == "Good"
-        assert ScoringNormalizer.interpret_score(0.6) == "Good"
-        assert ScoringNormalizer.interpret_score(0.59999) == "Fair"
-        assert ScoringNormalizer.interpret_score(0.4) == "Fair"
-        assert ScoringNormalizer.interpret_score(0.39999) == "Poor"
-        
+        assert interpret_score(0.8) == "Excellent"
+        assert interpret_score(0.79999) == "Good"
+        assert interpret_score(0.6) == "Good"
+        assert interpret_score(0.59999) == "Fair"
+        assert interpret_score(0.4) == "Fair"
+        assert interpret_score(0.39999) == "Poor"
+
         # Test edge cases
-        assert ScoringNormalizer.interpret_score(1.0) == "Excellent"
-        assert ScoringNormalizer.interpret_score(0.0) == "Poor"
-        assert ScoringNormalizer.interpret_score(-0.1) == "Poor"  # Negative scores
+        assert interpret_score(1.0) == "Excellent"
+        assert interpret_score(0.0) == "Poor"
+        assert interpret_score(-0.1) == "Poor"  # Negative scores
 
 
 class TestRAGIntegration:
