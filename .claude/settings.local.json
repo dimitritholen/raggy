@@ -4,7 +4,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(python:*)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__ucpl-compress__compress_code_context",
+      "Bash(fd:*)"
     ],
     "deny": [],
     "ask": []
