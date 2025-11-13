@@ -20,6 +20,14 @@ DEFAULT_RESULTS = 5
 DEFAULT_CONTEXT_CHARS = 200
 DEFAULT_HYBRID_WEIGHT = 0.7
 
+# Input validation ranges
+MIN_CHUNK_SIZE = 100
+MAX_CHUNK_SIZE = 10000
+MIN_CHUNK_OVERLAP = 0
+MIN_TOP_K = 1
+MAX_TOP_K = 100
+MAX_QUERY_LENGTH = 10000
+
 # File type constants
 SUPPORTED_EXTENSIONS = [".md", ".pdf", ".docx", ".txt"]
 GLOB_PATTERNS = ["**/*.md", "**/*.pdf", "**/*.docx", "**/*.txt"]

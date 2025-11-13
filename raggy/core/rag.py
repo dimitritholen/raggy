@@ -11,6 +11,12 @@ from ..config.constants import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_MODEL,
     DEFAULT_RESULTS,
+    MAX_CHUNK_SIZE,
+    MAX_QUERY_LENGTH,
+    MAX_TOP_K,
+    MIN_CHUNK_OVERLAP,
+    MIN_CHUNK_SIZE,
+    MIN_TOP_K,
 )
 from ..config.loader import load_config
 from ..query.processor import QueryProcessor
@@ -50,7 +56,14 @@ class UniversalRAG:
             quiet: If True, suppress output
             config_path: Optional path to configuration file
             database: Optional VectorDatabase implementation (defaults to ChromaDB)
+
+        Raises:
+            TypeError: If parameters have incorrect types
+            ValueError: If parameters are out of valid range or logically inconsistent
         """
+        # Validate all inputs
+        self._validate_init_params(docs_dir, db_dir, model_name, chunk_size, chunk_overlap)
+
         self.docs_dir = Path(docs_dir)
         self.db_dir = Path(db_dir)
         self.model_name = model_name
@@ -80,6 +93,55 @@ class UniversalRAG:
 
         # Lazy-loaded attributes
         self._embedding_model = None
+
+    def _validate_init_params(
+        self,
+        docs_dir: str,
+        db_dir: str,
+        model_name: str,
+        chunk_size: int,
+        chunk_overlap: int,
+    ) -> None:
+        """Validate initialization parameters.
+
+        Args:
+            docs_dir: Directory containing documents
+            db_dir: Directory for vector database
+            model_name: Name of embedding model
+            chunk_size: Size of text chunks for processing
+            chunk_overlap: Overlap between consecutive chunks
+
+        Raises:
+            TypeError: If parameters have incorrect types
+            ValueError: If parameters are out of valid range or logically inconsistent
+        """
+        # Validate chunk_size
+        if not isinstance(chunk_size, int):
+            raise TypeError(f"chunk_size must be int, got {type(chunk_size).__name__}")
+        if chunk_size < MIN_CHUNK_SIZE:
+            raise ValueError(f"chunk_size must be >= {MIN_CHUNK_SIZE}, got {chunk_size}")
+        if chunk_size > MAX_CHUNK_SIZE:
+            raise ValueError(f"chunk_size must be <= {MAX_CHUNK_SIZE}, got {chunk_size}")
+
+        # Validate chunk_overlap
+        if not isinstance(chunk_overlap, int):
+            raise TypeError(f"chunk_overlap must be int, got {type(chunk_overlap).__name__}")
+        if chunk_overlap < MIN_CHUNK_OVERLAP:
+            raise ValueError(f"chunk_overlap must be >= {MIN_CHUNK_OVERLAP}, got {chunk_overlap}")
+        if chunk_overlap >= chunk_size:
+            raise ValueError(
+                f"chunk_overlap ({chunk_overlap}) must be < chunk_size ({chunk_size})"
+            )
+
+        # Validate paths
+        if not docs_dir or not isinstance(docs_dir, str):
+            raise ValueError("docs_dir must be a non-empty string")
+        if not db_dir or not isinstance(db_dir, str):
+            raise ValueError("db_dir must be a non-empty string")
+
+        # Validate model_name
+        if not isinstance(model_name, str) or not model_name.strip():
+            raise ValueError("model_name must be a non-empty string")
 
     @property
     def collection_name(self) -> str:
@@ -255,7 +317,27 @@ class UniversalRAG:
 
         Returns:
             List[Dict[str, Any]]: Search results
+
+        Raises:
+            TypeError: If parameters have incorrect types
+            ValueError: If parameters are out of valid range
         """
+        # Validate query
+        if not isinstance(query, str):
+            raise TypeError(f"query must be str, got {type(query).__name__}")
+        if not query.strip():
+            raise ValueError("query cannot be empty or whitespace-only")
+        if len(query) > MAX_QUERY_LENGTH:
+            raise ValueError(f"query too long ({len(query)} chars, max {MAX_QUERY_LENGTH})")
+
+        # Validate n_results
+        if not isinstance(n_results, int):
+            raise TypeError(f"n_results must be int, got {type(n_results).__name__}")
+        if n_results < MIN_TOP_K:
+            raise ValueError(f"n_results must be >= {MIN_TOP_K}, got {n_results}")
+        if n_results > MAX_TOP_K:
+            raise ValueError(f"n_results must be <= {MAX_TOP_K}, got {n_results}")
+
         return self.search_engine.search(
             query,
             self.embedding_model,
