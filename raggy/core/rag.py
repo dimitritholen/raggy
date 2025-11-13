@@ -20,6 +20,7 @@ from ..utils.logging import log_error
 from ..utils.security import validate_path
 from ..utils.symbols import SYMBOLS
 from .database import DatabaseManager
+from .database_interface import VectorDatabase
 from .document import DocumentProcessor
 from .search import SearchEngine
 
@@ -36,6 +37,7 @@ class UniversalRAG:
         chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
         quiet: bool = False,
         config_path: Optional[str] = None,
+        database: Optional[VectorDatabase] = None,
     ) -> None:
         """Initialize the RAG system.
 
@@ -47,6 +49,7 @@ class UniversalRAG:
             chunk_overlap: Overlap between chunks
             quiet: If True, suppress output
             config_path: Optional path to configuration file
+            database: Optional VectorDatabase implementation (defaults to ChromaDB)
         """
         self.docs_dir = Path(docs_dir)
         self.db_dir = Path(db_dir)
@@ -63,7 +66,7 @@ class UniversalRAG:
             self.docs_dir, self.config, quiet=self.quiet
         )
         self.database_manager = DatabaseManager(
-            self.db_dir, quiet=self.quiet
+            self.db_dir, quiet=self.quiet, database=database
         )
         self.query_processor = QueryProcessor(
             self.config["search"].get("expansions", {})
@@ -77,6 +80,25 @@ class UniversalRAG:
 
         # Lazy-loaded attributes
         self._embedding_model = None
+
+    @property
+    def collection_name(self) -> str:
+        """Get collection name from database manager (backward compatibility).
+
+        Returns:
+            str: Name of the collection
+        """
+        return self.database_manager.collection_name
+
+    @property
+    def _client(self):
+        """Get database client (backward compatibility).
+
+        Returns:
+            Database client from manager
+        """
+        # For backward compatibility with tests
+        return getattr(self.database_manager, '_database', None)
 
     @property
     def embedding_model(self):

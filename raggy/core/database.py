@@ -1,19 +1,22 @@
-"""Database management for vector storage using ChromaDB."""
+"""Database management for vector storage using abstract interface."""
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..utils.logging import log_error
+from .chromadb_adapter import ChromaDBAdapter
+from .database_interface import VectorDatabase
 
 
 class DatabaseManager:
-    """Handles ChromaDB operations and collection management."""
+    """Handles vector database operations through abstract interface."""
 
     def __init__(
         self,
         db_dir: Path,
         collection_name: str = "project_docs",
-        quiet: bool = False
+        quiet: bool = False,
+        database: Optional[VectorDatabase] = None
     ) -> None:
         """Initialize database manager.
 
@@ -21,23 +24,23 @@ class DatabaseManager:
             db_dir: Directory for database storage
             collection_name: Name of the collection
             quiet: If True, suppress output
+            database: Optional VectorDatabase implementation (defaults to ChromaDB)
         """
         self.db_dir = db_dir
         self.collection_name = collection_name
         self.quiet = quiet
-        self._client = None
+
+        # Use provided database or default to ChromaDBAdapter
+        self._database = database or ChromaDBAdapter(path=str(self.db_dir))
 
     @property
     def client(self):
-        """Lazy-load ChromaDB client.
+        """Get database instance for backward compatibility.
 
         Returns:
-            ChromaDB client instance
+            VectorDatabase instance
         """
-        if self._client is None:
-            import chromadb
-            self._client = chromadb.PersistentClient(path=str(self.db_dir))
-        return self._client
+        return self._database
 
     def build_index(
         self,
@@ -55,19 +58,19 @@ class DatabaseManager:
         try:
             if force_rebuild:
                 try:
-                    self.client.delete_collection(self.collection_name)
+                    self._database.delete_collection(self.collection_name)
                     if not self.quiet:
                         print("Deleted existing collection")
                 except (ValueError, RuntimeError) as e:
                     # Collection may not exist - this is expected on first run
                     log_error(f"Could not delete collection (may not exist)", e, quiet=True)
 
-            collection = self.client.get_or_create_collection(
+            collection = self._database.get_or_create_collection(
                 name=self.collection_name,
                 metadata={"description": "Project documentation embeddings"},
             )
 
-            # Add to ChromaDB
+            # Add to database through abstract interface
             texts = [doc["text"] for doc in documents]
             collection.add(
                 embeddings=embeddings.tolist(),
@@ -77,7 +80,7 @@ class DatabaseManager:
             )
 
         except (ValueError, RuntimeError, OSError) as e:
-            # ChromaDB errors: invalid parameters, database connection issues
+            # Database errors: invalid parameters, connection issues
             log_error("Failed to build index", e, quiet=self.quiet)
             raise
 
@@ -85,9 +88,9 @@ class DatabaseManager:
         """Get the collection for search operations.
 
         Returns:
-            ChromaDB collection instance
+            Collection instance from abstract interface
         """
-        return self.client.get_collection(self.collection_name)
+        return self._database.get_collection(self.collection_name)
 
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics.
