@@ -76,77 +76,110 @@ class DocumentProcessor:
         if not self.quiet:
             print(f"Processing: {file_path.relative_to(self.docs_dir)}")
 
-        # Validate file path for security
-        if not validate_path(file_path, self.docs_dir):
-            log_warning(f"Skipping file outside docs directory: {file_path.name}", quiet=self.quiet)
+        if not self._validate_file(file_path):
             return []
 
-        # Check file size limits
+        try:
+            text = self._extract_text(file_path)
+            if not text:
+                return []
+
+            return self._create_document_chunks(file_path, text)
+
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+        except (UnicodeDecodeError, LookupError) as e:
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+        except (ValueError, RuntimeError) as e:
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+
+    def _validate_file(self, file_path: Path) -> bool:
+        """Validate file is safe to process.
+
+        Args:
+            file_path: Path to validate
+
+        Returns:
+            bool: True if file is valid
+        """
+        # Security check
+        if not validate_path(file_path, self.docs_dir):
+            log_warning(f"Skipping file outside docs directory: {file_path.name}", quiet=self.quiet)
+            return False
+
+        # Size check
         try:
             file_size = file_path.stat().st_size
             if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
                 log_warning(f"Skipping large file (>{MAX_FILE_SIZE_MB}MB): {file_path.name}", quiet=self.quiet)
-                return []
+                return False
         except OSError:
             log_warning(f"Could not check file size for {file_path.name}", quiet=self.quiet)
-            return []
+            return False
 
-        try:
-            # Extract text using Strategy pattern
-            file_extension = file_path.suffix.lower()
-            handler = self._file_handlers.get(file_extension)
+        return True
 
-            if handler is None:
-                if not self.quiet:
-                    supported_types = ', '.join(self._file_handlers.keys())
-                    print(f"Skipping unsupported file type: {file_path.name}")
-                    print(f"Supported types: {supported_types}")
-                return []
+    def _extract_text(self, file_path: Path) -> str:
+        """Extract text from file using appropriate handler.
 
-            text = handler(file_path)
+        Args:
+            file_path: Path to file
 
-            if not text.strip():
-                log_warning(f"No text extracted from {file_path.name}", quiet=self.quiet)
-                return []
+        Returns:
+            str: Extracted text or empty string if extraction failed
+        """
+        file_extension = file_path.suffix.lower()
+        handler = self._file_handlers.get(file_extension)
 
-            # Generate chunks
-            chunk_data = self._chunk_text(text)
+        if handler is None:
+            if not self.quiet:
+                supported_types = ', '.join(self._file_handlers.keys())
+                print(f"Skipping unsupported file type: {file_path.name}")
+                print(f"Supported types: {supported_types}")
+            return ""
 
-            # Create document entries
-            documents = []
-            file_hash = self._get_file_hash(file_path)
+        text = handler(file_path)
 
-            for i, chunk_info in enumerate(chunk_data):
-                doc_id = f"{file_path.stem}_{file_hash[:8]}_{i}"
+        if not text.strip():
+            log_warning(f"No text extracted from {file_path.name}", quiet=self.quiet)
+            return ""
 
-                # Merge chunk metadata with file metadata
-                metadata = {
-                    "source": str(file_path.relative_to(self.docs_dir)),
-                    "chunk_index": i,
-                    "total_chunks": len(chunk_data),
-                    "file_hash": file_hash,
-                    "file_type": file_path.suffix.lower(),
-                }
-                metadata.update(chunk_info.get("metadata", {}))
+        return text
 
-                documents.append(
-                    {"id": doc_id, "text": chunk_info["text"], "metadata": metadata}
-                )
+    def _create_document_chunks(self, file_path: Path, text: str) -> List[Dict[str, Any]]:
+        """Create document chunks with metadata.
 
-            return documents
+        Args:
+            file_path: Path to source file
+            text: Extracted text to chunk
 
-        except (FileNotFoundError, PermissionError, OSError) as e:
-            # File system errors during processing
-            handle_file_error(file_path, "process", e, quiet=self.quiet)
-            return []
-        except (UnicodeDecodeError, LookupError) as e:
-            # Text encoding errors
-            handle_file_error(file_path, "process", e, quiet=self.quiet)
-            return []
-        except (ValueError, RuntimeError) as e:
-            # Document parsing errors (PDF/DOCX) or chunking failures
-            handle_file_error(file_path, "process", e, quiet=self.quiet)
-            return []
+        Returns:
+            List of document chunks with metadata
+        """
+        chunk_data = self._chunk_text(text)
+        file_hash = self._get_file_hash(file_path)
+
+        documents = []
+        for i, chunk_info in enumerate(chunk_data):
+            doc_id = f"{file_path.stem}_{file_hash[:8]}_{i}"
+
+            metadata = {
+                "source": str(file_path.relative_to(self.docs_dir)),
+                "chunk_index": i,
+                "total_chunks": len(chunk_data),
+                "file_hash": file_hash,
+                "file_type": file_path.suffix.lower(),
+            }
+            metadata.update(chunk_info.get("metadata", {}))
+
+            documents.append(
+                {"id": doc_id, "text": chunk_info["text"], "metadata": metadata}
+            )
+
+        return documents
 
     def _get_file_hash(self, file_path: Path) -> str:
         """Generate SHA256 hash of file for change detection using streaming for large files.

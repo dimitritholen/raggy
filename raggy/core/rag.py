@@ -101,57 +101,114 @@ class UniversalRAG:
         """
         start_time = time.time()
 
-        # Find documents
         files = self.document_processor.find_documents()
+        if not self._validate_documents_found(files):
+            return
+
+        all_documents = self._process_documents(files)
+        if not self._validate_documents_extracted(all_documents):
+            return
+
+        self._build_index(all_documents, force_rebuild)
+        self._display_build_summary(len(all_documents), len(files), start_time)
+
+    def _validate_documents_found(self, files: List[Path]) -> bool:
+        """Validate documents were found.
+
+        Args:
+            files: List of document file paths
+
+        Returns:
+            bool: True if documents found
+        """
         if not files:
             log_error("No documents found in docs/ directory", quiet=self.quiet)
             if not self.quiet:
                 print("Solution: Add supported files to the docs/ directory")
                 print("Supported formats: .md, .pdf, .docx, .txt")
                 print("Example: docs/readme.md, docs/guide.pdf, docs/manual.docx, docs/notes.txt")
-            return
+            return False
 
         if not self.quiet:
             print(f"Found {len(files)} documents")
+        return True
 
-        # Process each document
+    def _process_documents(self, files: List[Path]) -> List[Dict[str, Any]]:
+        """Process all documents into chunks.
+
+        Args:
+            files: List of document file paths
+
+        Returns:
+            List of document chunks with metadata
+        """
         all_documents = []
         for i, file_path in enumerate(files, 1):
             if not self.quiet:
                 print(f"[{i}/{len(files)}] Processing {file_path.name}...")
             docs = self.document_processor.process_document(file_path)
             all_documents.extend(docs)
+        return all_documents
 
+    def _validate_documents_extracted(self, all_documents: List[Dict[str, Any]]) -> bool:
+        """Validate content was extracted from documents.
+
+        Args:
+            all_documents: List of extracted document chunks
+
+        Returns:
+            bool: True if content extracted
+        """
         if not all_documents:
             log_error("No content could be extracted from documents", quiet=self.quiet)
             if not self.quiet:
-                print("This could mean:")
-                print("- PDF files are corrupted or password-protected")
-                print("- Word documents (.docx) are corrupted")
-                print("- Text files are empty or have encoding issues")
-                print("- Markdown files are empty")
-                print("- Files are not readable")
-                print("Check your files and try again.")
-            return
+                self._display_extraction_error_hints()
+            return False
 
         if not self.quiet:
             print(f"Generated {len(all_documents)} text chunks")
+        return True
+
+    def _display_extraction_error_hints(self) -> None:
+        """Display hints for extraction errors."""
+        print("This could mean:")
+        print("- PDF files are corrupted or password-protected")
+        print("- Word documents (.docx) are corrupted")
+        print("- Text files are empty or have encoding issues")
+        print("- Markdown files are empty")
+        print("- Files are not readable")
+        print("Check your files and try again.")
+
+    def _build_index(self, all_documents: List[Dict[str, Any]], force_rebuild: bool) -> None:
+        """Build vector database index.
+
+        Args:
+            all_documents: List of document chunks
+            force_rebuild: Whether to force rebuild
+        """
+        if not self.quiet:
             print("Generating embeddings...")
 
-        # Generate embeddings
         texts = [doc["text"] for doc in all_documents]
         embeddings = self.embedding_model.encode(
             texts, show_progress_bar=not self.quiet
         )
 
-        # Build index
         self.database_manager.build_index(
             all_documents, embeddings, force_rebuild=force_rebuild
         )
 
+    def _display_build_summary(self, num_chunks: int, num_files: int, start_time: float) -> None:
+        """Display build completion summary.
+
+        Args:
+            num_chunks: Number of chunks indexed
+            num_files: Number of files processed
+            start_time: Build start time
+        """
         elapsed = time.time() - start_time
         print(
-            f"{SYMBOLS['success']} Successfully indexed {len(all_documents)} chunks from {len(files)} files"
+            f"{SYMBOLS['success']} Successfully indexed {num_chunks} chunks from {num_files} files"
         )
         print(f"Database saved to: {self.db_dir}")
         if not self.quiet:
@@ -246,7 +303,32 @@ class UniversalRAG:
         tests_passed = 0
         tests_total = 0
 
-        # Test 1: BM25 Scorer
+        # Run individual tests
+        if self._test_bm25_scorer():
+            tests_passed += 1
+        tests_total += 1
+
+        if self._test_query_processor():
+            tests_passed += 1
+        tests_total += 1
+
+        if self._test_path_validation():
+            tests_passed += 1
+        tests_total += 1
+
+        if self._test_scoring_normalizer():
+            tests_passed += 1
+        tests_total += 1
+
+        # Summary
+        return self._print_test_summary(tests_passed, tests_total)
+
+    def _test_bm25_scorer(self) -> bool:
+        """Test BM25 scorer functionality.
+
+        Returns:
+            bool: True if test passes
+        """
         try:
             print("Testing BM25 scorer...")
             scorer = BM25Scorer()
@@ -255,60 +337,84 @@ class UniversalRAG:
             score = scorer.score("hello world", 0)
             if score > 0:
                 print("✓ BM25 scorer working correctly")
-                tests_passed += 1
+                return True
             else:
                 print("✗ BM25 scorer test failed")
+                return False
         except (ImportError, AttributeError, ValueError, RuntimeError) as e:
-            # Diagnostic test - catch expected errors from BM25 implementation
             print(f"✗ BM25 scorer error: {e}")
-        tests_total += 1
+            return False
 
-        # Test 2: Query Processor
+    def _test_query_processor(self) -> bool:
+        """Test query processor functionality.
+
+        Returns:
+            bool: True if test passes
+        """
         try:
             print("Testing query processor...")
             processor = QueryProcessor()
             result = processor.process("test query")
             if result["original"] == "test query" and "terms" in result:
                 print("✓ Query processor working correctly")
-                tests_passed += 1
+                return True
             else:
                 print("✗ Query processor test failed")
+                return False
         except (ImportError, AttributeError, ValueError, RuntimeError) as e:
-            # Diagnostic test - catch expected errors from query processing
             print(f"✗ Query processor error: {e}")
-        tests_total += 1
+            return False
 
-        # Test 3: Path validation
+    def _test_path_validation(self) -> bool:
+        """Test path validation functionality.
+
+        Returns:
+            bool: True if test passes
+        """
         try:
             print("Testing path validation...")
             test_path = Path("test.txt")
             is_valid = validate_path(test_path)
             if isinstance(is_valid, bool):
                 print("✓ Path validation working correctly")
-                tests_passed += 1
+                return True
             else:
                 print("✗ Path validation test failed")
+                return False
         except (ImportError, AttributeError, ValueError, RuntimeError) as e:
-            # Diagnostic test - catch expected errors from path validation
             print(f"✗ Path validation error: {e}")
-        tests_total += 1
+            return False
 
-        # Test 4: Scoring normalizer
+    def _test_scoring_normalizer(self) -> bool:
+        """Test scoring normalizer functionality.
+
+        Returns:
+            bool: True if test passes
+        """
         try:
             print("Testing scoring normalizer...")
             score = normalize_cosine_distance(0.5)
             interpretation = interpret_score(0.7)
             if 0 <= score <= 1 and interpretation == "Good":
                 print("✓ Scoring normalizer working correctly")
-                tests_passed += 1
+                return True
             else:
                 print("✗ Scoring normalizer test failed")
+                return False
         except (ImportError, AttributeError, ValueError, RuntimeError) as e:
-            # Diagnostic test - catch expected errors from scoring functions
             print(f"✗ Scoring normalizer error: {e}")
-        tests_total += 1
+            return False
 
-        # Summary
+    def _print_test_summary(self, tests_passed: int, tests_total: int) -> bool:
+        """Print test summary and return overall result.
+
+        Args:
+            tests_passed: Number of tests that passed
+            tests_total: Total number of tests run
+
+        Returns:
+            bool: True if all tests passed
+        """
         print(f"\nTest Results: {tests_passed}/{tests_total} tests passed")
         if tests_passed == tests_total:
             print(f"{SYMBOLS['success']} All tests passed!")
@@ -323,15 +429,29 @@ class UniversalRAG:
 
         print(f"\n{SYMBOLS['search']} Diagnosing raggy system setup...")
 
-        # Check Python version
-        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        self._check_python_version(sys.version_info)
+        self._check_directories()
+        deps_status = self._check_dependencies()
+        self._check_embedding_model(deps_status)
+        self._check_database_status()
+
+        print(f"\n{SYMBOLS['success']} Diagnosis complete!")
+
+    def _check_python_version(self, version_info) -> None:
+        """Check Python version compatibility.
+
+        Args:
+            version_info: sys.version_info object
+        """
+        python_version = f"{version_info.major}.{version_info.minor}.{version_info.micro}"
         print(f"Python version: {python_version}")
-        if sys.version_info >= (3, 8):
+        if version_info >= (3, 8):
             print("✓ Python version compatible")
         else:
             print("⚠️  Python 3.8+ recommended")
 
-        # Check directories
+    def _check_directories(self) -> None:
+        """Check required directories exist."""
         print(f"Docs directory: {self.docs_dir}")
         if self.docs_dir.exists():
             doc_count = len(list(self.docs_dir.glob("**/*")))
@@ -345,71 +465,86 @@ class UniversalRAG:
         else:
             print("ℹ️  Database directory will be created on first build")
 
-        # Check dependencies
+    def _check_dependencies(self) -> list:
+        """Check required dependencies are installed.
+
+        Returns:
+            list: Status of each dependency (True if installed)
+        """
         print("\nDependency check:")
         deps_status = []
 
+        deps_status.append(self._check_dependency("chromadb", "✗ ChromaDB not installed"))
+        deps_status.append(self._check_dependency("sentence_transformers", "✗ sentence-transformers not installed", import_from="sentence_transformers.SentenceTransformer"))
+        deps_status.append(self._check_dependency("PyPDF2", "⚠️  PyPDF2 not installed (PDF support disabled)"))
+        deps_status.append(self._check_dependency("docx", "⚠️  python-docx not installed (DOCX support disabled)", import_from="docx.Document"))
+
+        return deps_status
+
+    def _check_dependency(self, package: str, error_msg: str, import_from: str = None) -> bool:
+        """Check if a single dependency is installed.
+
+        Args:
+            package: Package name to check
+            error_msg: Error message to display if not found
+            import_from: Specific import path (e.g., "sentence_transformers.SentenceTransformer")
+
+        Returns:
+            bool: True if dependency is installed
+        """
         try:
-            import chromadb
-            print("✓ ChromaDB installed")
-            deps_status.append(True)
+            if import_from:
+                module_path, class_name = import_from.rsplit('.', 1)
+                module = __import__(module_path, fromlist=[class_name])
+                getattr(module, class_name)
+            else:
+                __import__(package)
+
+            # Use friendly package names for display
+            display_name = {
+                "chromadb": "ChromaDB",
+                "sentence_transformers": "sentence-transformers",
+                "PyPDF2": "PyPDF2",
+                "docx": "python-docx"
+            }.get(package, package)
+            print(f"✓ {display_name} installed")
+            return True
         except ImportError:
-            print("✗ ChromaDB not installed")
-            deps_status.append(False)
+            print(error_msg)
+            return False
+
+    def _check_embedding_model(self, deps_status: list) -> None:
+        """Check embedding model can be loaded.
+
+        Args:
+            deps_status: List of dependency statuses
+        """
+        if not all(deps_status[:2]):  # ChromaDB and sentence-transformers required
+            return
 
         try:
             from sentence_transformers import SentenceTransformer
-            print("✓ sentence-transformers installed")
-            deps_status.append(True)
-        except ImportError:
-            print("✗ sentence-transformers not installed")
-            deps_status.append(False)
 
-        try:
-            import PyPDF2
-            print("✓ PyPDF2 installed")
-            deps_status.append(True)
-        except ImportError:
-            print("⚠️  PyPDF2 not installed (PDF support disabled)")
-            deps_status.append(False)
+            print(f"\nTesting embedding model: {self.model_name}")
+            model = SentenceTransformer(self.model_name)
+            test_embedding = model.encode(["test"])
+            print(f"✓ Embedding model loaded successfully (dimensions: {len(test_embedding[0])})")
+        except (ImportError, OSError, RuntimeError, ValueError) as e:
+            print(f"⚠️  Embedding model error: {e}")
 
-        try:
-            from docx import Document
-            print("✓ python-docx installed")
-            deps_status.append(True)
-        except ImportError:
-            print("⚠️  python-docx not installed (DOCX support disabled)")
-            deps_status.append(False)
-
-        # Model check
-        if all(deps_status[:2]):  # ChromaDB and sentence-transformers required
-            try:
-                from sentence_transformers import SentenceTransformer
-
-                print(f"\nTesting embedding model: {self.model_name}")
-                model = SentenceTransformer(self.model_name)
-                test_embedding = model.encode(["test"])
-                print(f"✓ Embedding model loaded successfully (dimensions: {len(test_embedding[0])})")
-            except (ImportError, OSError, RuntimeError, ValueError) as e:
-                # Diagnostic check - model loading or inference errors
-                print(f"⚠️  Embedding model error: {e}")
-
-        # Database status
+    def _check_database_status(self) -> None:
+        """Check database accessibility and stats."""
         try:
             stats = self.get_stats()
+            print(f"\nDatabase status:")
             if "error" not in stats:
-                print(f"\nDatabase status:")
                 print(f"✓ Database accessible")
                 print(f"  Total chunks: {stats['total_chunks']}")
                 print(f"  Documents indexed: {len(stats['sources'])}")
             else:
-                print(f"\nDatabase status:")
                 print("ℹ️  No database found - run 'python raggy.py build' to create")
         except (OSError, RuntimeError, ValueError) as e:
-            # Diagnostic check - database access errors
             print(f"⚠️  Database check error: {e}")
-
-        print(f"\n{SYMBOLS['success']} Diagnosis complete!")
 
     def validate_configuration(self) -> bool:
         """Validate configuration and setup.

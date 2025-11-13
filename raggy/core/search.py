@@ -349,36 +349,98 @@ class SearchEngine:
         """
         context_chars = context_chars or self.config["search"]["context_chars"]
 
-        # Simple highlighting - find first match and show context
         query_terms = re.findall(r"\b\w+\b", query.lower())
-        text_lower = text.lower()
+        match_pos = self._find_first_match(query_terms, text.lower())
 
-        # Find first match position
-        match_pos = -1
+        if match_pos == -1:
+            return self._get_default_excerpt(text, context_chars)
+
+        return self._extract_context_window(text, match_pos, context_chars)
+
+    def _find_first_match(self, query_terms: list, text_lower: str) -> int:
+        """Find position of first matching query term.
+
+        Args:
+            query_terms: List of query terms to search for
+            text_lower: Lowercased text to search in
+
+        Returns:
+            int: Position of first match or -1 if no match found
+        """
         for term in query_terms:
             pos = text_lower.find(term)
             if pos != -1:
-                match_pos = pos
-                break
+                return pos
+        return -1
 
-        if match_pos == -1:
-            # No direct match, return beginning
-            return text[:context_chars] + "..." if len(text) > context_chars else text
+    def _get_default_excerpt(self, text: str, context_chars: int) -> str:
+        """Get default excerpt when no match found.
 
-        # Calculate context window around match
+        Args:
+            text: Full text
+            context_chars: Maximum characters to return
+
+        Returns:
+            str: Excerpt from beginning of text
+        """
+        if len(text) > context_chars:
+            return text[:context_chars] + "..."
+        return text
+
+    def _extract_context_window(self, text: str, match_pos: int, context_chars: int) -> str:
+        """Extract context window around match position.
+
+        Args:
+            text: Full text
+            match_pos: Position of match
+            context_chars: Size of context window
+
+        Returns:
+            str: Excerpt with context around match
+        """
         start = max(0, match_pos - context_chars // 2)
         end = min(len(text), match_pos + context_chars // 2)
 
         # Extend to word boundaries
-        while start > 0 and text[start] != " ":
-            start -= 1
-        while end < len(text) and text[end] != " ":
-            end += 1
+        start = self._extend_to_word_boundary(text, start, direction='left')
+        end = self._extend_to_word_boundary(text, end, direction='right')
 
         excerpt = text[start:end].strip()
+        return self._add_ellipsis(excerpt, start, end, len(text))
+
+    def _extend_to_word_boundary(self, text: str, pos: int, direction: str) -> int:
+        """Extend position to nearest word boundary.
+
+        Args:
+            text: Full text
+            pos: Current position
+            direction: 'left' or 'right'
+
+        Returns:
+            int: Adjusted position at word boundary
+        """
+        if direction == 'left':
+            while pos > 0 and text[pos] != " ":
+                pos -= 1
+        else:  # direction == 'right'
+            while pos < len(text) and text[pos] != " ":
+                pos += 1
+        return pos
+
+    def _add_ellipsis(self, excerpt: str, start: int, end: int, text_len: int) -> str:
+        """Add ellipsis to excerpt if truncated.
+
+        Args:
+            excerpt: Extracted text excerpt
+            start: Start position in original text
+            end: End position in original text
+            text_len: Length of original text
+
+        Returns:
+            str: Excerpt with appropriate ellipsis
+        """
         if start > 0:
             excerpt = "..." + excerpt
-        if end < len(text):
+        if end < text_len:
             excerpt = excerpt + "..."
-
         return excerpt

@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 from ..setup.environment import setup_environment
 from ..utils.logging import log_error
@@ -128,13 +128,42 @@ class OptimizeCommand(Command):
             f"\n{SYMBOLS['search']} Running benchmark queries to optimize settings..."
         )
 
-        # Get sample content from the database to generate test queries
         stats = rag.get_stats()
-        if "error" in stats or stats["total_chunks"] == 0:
-            print("Error: No indexed content found. Run 'build' first.")
+        if not self._validate_database(stats):
             return
 
-        # Generate universal test queries based on document names and common terms
+        test_queries = self._generate_test_queries(stats)
+        print(
+            f"Testing with queries derived from your content: {', '.join(test_queries)}"
+        )
+
+        results_semantic, results_hybrid = self._run_benchmarks(rag, test_queries)
+        self._display_results(results_semantic, results_hybrid)
+        self._display_usage_suggestions()
+
+    def _validate_database(self, stats: Dict[str, Any]) -> bool:
+        """Validate database has content.
+
+        Args:
+            stats: Database statistics
+
+        Returns:
+            bool: True if database is valid
+        """
+        if "error" in stats or stats["total_chunks"] == 0:
+            print("Error: No indexed content found. Run 'build' first.")
+            return False
+        return True
+
+    def _generate_test_queries(self, stats: Dict[str, Any]) -> List[str]:
+        """Generate test queries from content.
+
+        Args:
+            stats: Database statistics
+
+        Returns:
+            List[str]: Test queries
+        """
         test_queries = []
         doc_names = list(stats["sources"].keys())
 
@@ -143,7 +172,7 @@ class OptimizeCommand(Command):
             base_name = Path(doc).stem.replace("-", " ").replace("_", " ")
             test_queries.append(base_name)
 
-        # Add some universal technical queries
+        # Add universal technical queries
         universal_queries = [
             "configuration",
             "setup",
@@ -151,12 +180,20 @@ class OptimizeCommand(Command):
             "documentation",
             "features",
         ]
-        test_queries.extend(universal_queries[:2])  # Add 2 universal terms
+        test_queries.extend(universal_queries[:2])
 
-        print(
-            f"Testing with queries derived from your content: {', '.join(test_queries)}"
-        )
+        return test_queries
 
+    def _run_benchmarks(self, rag: Any, test_queries: List[str]) -> tuple:
+        """Run benchmark tests on queries.
+
+        Args:
+            rag: RAG instance
+            test_queries: List of test queries
+
+        Returns:
+            tuple: (semantic_scores, hybrid_scores)
+        """
         results_semantic = []
         results_hybrid = []
 
@@ -164,23 +201,38 @@ class OptimizeCommand(Command):
             print(f"Testing: {query}")
 
             # Test semantic search
-            sem_results = rag.search(query, n_results=3, hybrid=False)
-            avg_sem_score = (
-                sum(r.get("final_score", 0) for r in sem_results) / len(sem_results)
-                if sem_results
-                else 0
-            )
-            results_semantic.append(avg_sem_score)
+            sem_score = self._test_search_mode(rag, query, hybrid=False)
+            results_semantic.append(sem_score)
 
             # Test hybrid search
-            hyb_results = rag.search(query, n_results=3, hybrid=True)
-            avg_hyb_score = (
-                sum(r.get("final_score", 0) for r in hyb_results) / len(hyb_results)
-                if hyb_results
-                else 0
-            )
-            results_hybrid.append(avg_hyb_score)
+            hyb_score = self._test_search_mode(rag, query, hybrid=True)
+            results_hybrid.append(hyb_score)
 
+        return results_semantic, results_hybrid
+
+    def _test_search_mode(self, rag: Any, query: str, hybrid: bool) -> float:
+        """Test single search mode and return average score.
+
+        Args:
+            rag: RAG instance
+            query: Search query
+            hybrid: Whether to use hybrid search
+
+        Returns:
+            float: Average score
+        """
+        results = rag.search(query, n_results=3, hybrid=hybrid)
+        if not results:
+            return 0.0
+        return sum(r.get("final_score", 0) for r in results) / len(results)
+
+    def _display_results(self, results_semantic: List[float], results_hybrid: List[float]) -> None:
+        """Display optimization results.
+
+        Args:
+            results_semantic: Semantic search scores
+            results_hybrid: Hybrid search scores
+        """
         avg_semantic = sum(results_semantic) / len(results_semantic)
         avg_hybrid = sum(results_hybrid) / len(results_hybrid)
 
@@ -188,6 +240,15 @@ class OptimizeCommand(Command):
         print(f"  Average Semantic Score: {avg_semantic:.3f}")
         print(f"  Average Hybrid Score: {avg_hybrid:.3f}")
 
+        self._display_recommendation(avg_semantic, avg_hybrid)
+
+    def _display_recommendation(self, avg_semantic: float, avg_hybrid: float) -> None:
+        """Display search mode recommendation.
+
+        Args:
+            avg_semantic: Average semantic score
+            avg_hybrid: Average hybrid score
+        """
         if avg_hybrid > avg_semantic * 1.1:
             print(
                 f"\n{SYMBOLS['success']} Recommendation: Use --hybrid flag for better results"
@@ -199,6 +260,8 @@ class OptimizeCommand(Command):
         else:
             print(f"\n{SYMBOLS['success']} Both search modes perform similarly")
 
+    def _display_usage_suggestions(self) -> None:
+        """Display suggested usage examples."""
         print(f"\nSuggested usage:")
         print(
             f'  python {sys.argv[0]} search "your query" --hybrid    # For exact matches'
