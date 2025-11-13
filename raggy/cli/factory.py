@@ -4,9 +4,12 @@ from .base import Command
 from .commands import (
     BuildCommand,
     DiagnoseCommand,
+    ForgetCommand,
     InitCommand,
     InteractiveCommand,
     OptimizeCommand,
+    RecallCommand,
+    RememberCommand,
     SearchCommand,
     StatusCommand,
     TestCommand,
@@ -28,6 +31,9 @@ class CommandFactory:
         "test": TestCommand,
         "diagnose": DiagnoseCommand,
         "validate": ValidateCommand,
+        "remember": RememberCommand,
+        "recall": RecallCommand,
+        "forget": ForgetCommand,
     }
 
     @classmethod

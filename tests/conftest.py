@@ -232,3 +232,81 @@ def query_processor_test_cases() -> Dict[str, Dict[str, Any]]:
 
 # Environment setup for testing
 os.environ.setdefault("RAGGY_TEST_MODE", "true")
+
+
+# =============================================================================
+# MEMORY SYSTEM FIXTURES
+# =============================================================================
+
+
+@pytest.fixture
+def temp_db_dir(tmp_path) -> str:
+    """Create temporary directory for vector database."""
+    db_dir = str(tmp_path / "vectordb")
+    return db_dir
+
+
+@pytest.fixture
+def memory_manager(temp_db_dir):
+    """MemoryManager instance with real ChromaDB in temporary directory."""
+    from raggy.core.memory import MemoryManager
+    manager = MemoryManager(db_dir=temp_db_dir, quiet=True)
+    yield manager
+    # Cleanup handled by temp_db_dir fixture
+
+
+@pytest.fixture
+def memory_api(temp_db_dir):
+    """Memory public API instance with real ChromaDB."""
+    from raggy.core.memory import Memory
+    memory = Memory(db_dir=temp_db_dir, quiet=True)
+    yield memory
+    # Cleanup handled by temp_db_dir fixture
+
+
+@pytest.fixture
+def sample_memory() -> Dict[str, Any]:
+    """Typical memory entry for tests."""
+    return {
+        "text": "Decided to use dependency injection pattern for database layer",
+        "memory_type": "decision",
+        "tags": ["architecture", "database"],
+        "priority": "high"
+    }
+
+
+@pytest.fixture
+def sample_memories() -> list:
+    """Multiple memory entries for testing various scenarios."""
+    return [
+        {
+            "text": "Architecture decision about using dependency injection for database layer to support multiple backends",
+            "memory_type": "decision",
+            "tags": ["architecture", "database"],
+            "priority": "high"
+        },
+        {
+            "text": "Solution to ChromaDB empty list metadata error: do not include empty lists in metadata",
+            "memory_type": "solution",
+            "tags": ["chromadb", "bug-fix"],
+            "priority": "medium"
+        },
+        {
+            "text": "Using Strategy pattern for document parsers with PDFParser, DOCXParser, MarkdownParser classes",
+            "memory_type": "pattern",
+            "tags": ["design-pattern", "document-processing"],
+            "priority": "medium"
+        },
+        {
+            "text": "Learned that semantic search requires proper embeddings for accurate retrieval",
+            "memory_type": "learning",
+            "tags": ["embeddings", "search"],
+            "priority": "low"
+        },
+        {
+            "text": "Fixed circular import by moving DatabaseManager import inside function",
+            "memory_type": "error",
+            "tags": ["imports", "debugging"],
+            "priority": "medium"
+        }
+    ]

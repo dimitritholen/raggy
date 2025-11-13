@@ -50,6 +50,13 @@ Examples:
     %(prog)s optimize                           # Benchmark semantic vs hybrid search
     %(prog)s interactive --quiet                # Interactive mode, minimal output
 
+  Memory Management:
+    %(prog)s remember "Fixed bug in search"    # Store development context
+    %(prog)s recall "bug fix"                   # Search memories
+    %(prog)s forget <memory_id>                 # Delete specific memory
+    %(prog)s forget --archive --older-than 90d  # Archive old memories
+    %(prog)s forget --all                       # Delete all memories (requires strict confirmation)
+
   Advanced:
     %(prog)s rebuild --config custom.yaml       # Use custom configuration
     %(prog)s search "term" --results 10        # More results with quality scores
@@ -58,10 +65,10 @@ Examples:
 
     parser.add_argument(
         "command",
-        choices=["init", "build", "rebuild", "search", "interactive", "status", "optimize", "test", "diagnose", "validate"],
+        choices=["init", "build", "rebuild", "search", "interactive", "status", "optimize", "test", "diagnose", "validate", "remember", "recall", "forget"],
         help="Command to execute",
     )
-    parser.add_argument("query", nargs="*", help="Search query (for search command)")
+    parser.add_argument("query", nargs="*", help="Search query (for search/recall commands), memory text (for remember command), or memory ID (for forget command)")
 
     # Options
     parser.add_argument(
@@ -119,6 +126,75 @@ Examples:
     )
     parser.add_argument("--version", action="version", version=f"raggy {__version__}")
 
+    # Remember command specific arguments
+    parser.add_argument(
+        "--file",
+        help="Read memory text from file (for remember command)"
+    )
+    parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read memory text from stdin (for remember command)"
+    )
+    parser.add_argument(
+        "--type",
+        choices=["decision", "solution", "pattern", "learning", "error", "note"],
+        default="note",
+        help="Memory type (for remember command, default: note)"
+    )
+    parser.add_argument(
+        "--tags",
+        help="Comma-separated tags (for remember command, e.g., 'api,refactor')"
+    )
+    parser.add_argument(
+        "--priority",
+        choices=["high", "medium", "low"],
+        default="medium",
+        help="Priority level (for remember command, default: medium)"
+    )
+    parser.add_argument(
+        "--files",
+        help="Comma-separated file paths involved (for remember command)"
+    )
+
+    # Recall command specific arguments
+    parser.add_argument(
+        "--since",
+        help="Filter memories after this ISO date (for recall command, e.g., '2025-01-01')"
+    )
+    parser.add_argument(
+        "--last",
+        help="Filter memories from relative time ago (for recall command, e.g., '7d', '2w', '30d', '3m')"
+    )
+    parser.add_argument(
+        "--include-docs",
+        action="store_true",
+        help="Also search documentation (for recall command, unified search)"
+    )
+
+    # Forget command specific arguments
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Delete all memories (for forget command, requires strict confirmation)"
+    )
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="Archive old memories instead of deleting (for forget command)"
+    )
+    parser.add_argument(
+        "--older-than",
+        help="Archive memories older than this time (for forget command with --archive, e.g., '90d', '6m', '1y')"
+    )
+
+    # Search command enhancement
+    parser.add_argument(
+        "--include-memory",
+        action="store_true",
+        help="Also search memory (for search command, unified search)"
+    )
+
     return parser.parse_args()
 
 
@@ -149,12 +225,20 @@ def main() -> None:
         if not args.quiet:
             print(f"Debug: Update check failed: {e}")
 
+    # Handle forget command memory_id extraction
+    if args.command == "forget":
+        # Extract memory_id from query argument if provided
+        if args.query and len(args.query) > 0:
+            args.memory_id = args.query[0]
+        else:
+            args.memory_id = None
+
     # Create and execute command
     try:
         command = CommandFactory.create_command(args.command)
 
-        # Handle init command specially (no RAG instance needed)
-        if args.command == "init":
+        # Handle init, remember, and forget commands specially (no RAG instance needed)
+        if args.command in ("init", "remember", "forget"):
             command.execute(args)
             return
 

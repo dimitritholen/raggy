@@ -769,3 +769,162 @@ class UniversalRAG:
         print("✓ Configuration is valid")
         print(f"{SYMBOLS['success']} All validation checks passed!")
         return True
+
+    # =========================================================================
+    # MEMORY SYSTEM INTEGRATION (New in 2.0)
+    # =========================================================================
+
+    def remember(
+        self,
+        text: str,
+        memory_type: str = "note",
+        tags: Optional[List[str]] = None,
+        priority: str = "medium",
+        **kwargs
+    ) -> str:
+        """Remember AI development context.
+
+        Convenience wrapper around Memory.add() that reuses the RAG system's
+        database connection. Stores development context (decisions, solutions,
+        patterns) that can be retrieved later.
+
+        This allows using a single UniversalRAG instance for both document
+        search AND memory management without multiple database connections.
+
+        Args:
+            text: Memory content to store (max 100KB)
+            memory_type: Type of memory. One of:
+                - "decision": Architecture or design decisions
+                - "solution": Problem solutions and workarounds
+                - "pattern": Code patterns and best practices
+                - "learning": Lessons learned and insights
+                - "error": Error resolutions and debugging notes
+                - "note": General development notes
+                Default: "note"
+            tags: Optional list of tags for categorization
+            priority: Priority level (high|medium|low). Default: "medium"
+            **kwargs: Additional metadata (files_involved, session_id, etc.)
+
+        Returns:
+            str: Unique memory ID (format: mem_YYYYMMDD_HHMMSS_hash)
+
+        Raises:
+            ValueError: If parameters are invalid
+            RuntimeError: If memory storage fails
+
+        Example:
+            >>> rag = UniversalRAG(docs_dir="./docs", db_dir="./vectordb")
+            >>>
+            >>> # Store a decision while working with documents
+            >>> mem_id = rag.remember(
+            ...     "Decided to use hybrid search (BM25 + semantic) for better "
+            ...     "accuracy on technical queries",
+            ...     memory_type="decision",
+            ...     tags=["search", "architecture"],
+            ...     priority="high"
+            ... )
+            >>>
+            >>> # Store a bug fix
+            >>> rag.remember(
+            ...     "Fixed ChromaDB metadata error by removing empty lists",
+            ...     memory_type="solution",
+            ...     tags=["chromadb", "bug-fix"]
+            ... )
+            >>>
+            >>> # Later: search documents AND recall memory
+            >>> doc_results = rag.search("database architecture")
+            >>> memory_results = rag.recall("database architecture decisions")
+
+        Note:
+            Memory is stored in a separate collection ("project_memory") from
+            documents, enabling different lifecycle management.
+        """
+        # Lazy-initialize memory manager (reuse database connection)
+        if not hasattr(self, '_memory_manager'):
+            from .memory import MemoryManager
+            self._memory_manager = MemoryManager(
+                db_dir=str(self.db_dir),
+                model_name=self.model_name,
+                collection_name="project_memory",
+                quiet=self.quiet,
+                database=None  # Uses default ChromaDB
+            )
+
+        return self._memory_manager.add(
+            text=text,
+            memory_type=memory_type,
+            tags=tags,
+            priority=priority,
+            **kwargs
+        )
+
+    def recall(
+        self,
+        query: str,
+        memory_types: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        since: Optional[str] = None,
+        limit: int = 10,
+        **kwargs
+    ) -> List[Dict[str, Any]]:
+        """Recall AI development context.
+
+        Convenience wrapper around Memory.search() that reuses the RAG system's
+        database connection. Searches stored development context by semantic
+        similarity.
+
+        Args:
+            query: Search query text
+            memory_types: Optional list of memory types to filter by
+            tags: Optional list of tags to filter by (OR logic)
+            since: Optional ISO 8601 timestamp to filter after this date
+            limit: Maximum results to return. Default: 10
+            **kwargs: Additional search parameters
+
+        Returns:
+            List[Dict[str, Any]]: List of memory entries with text and metadata
+
+        Raises:
+            ValueError: If parameters are invalid
+            RuntimeError: If search fails
+
+        Example:
+            >>> rag = UniversalRAG(docs_dir="./docs", db_dir="./vectordb")
+            >>>
+            >>> # Search for architecture decisions
+            >>> results = rag.recall(
+            ...     "database architecture decisions",
+            ...     memory_types=["decision", "pattern"],
+            ...     tags=["architecture"],
+            ...     limit=5
+            ... )
+            >>>
+            >>> for result in results:
+            ...     print(f"{result['metadata']['memory_type']}: {result['text'][:80]}...")
+            >>>
+            >>> # Combine document search with memory recall
+            >>> doc_results = rag.search("API design patterns")
+            >>> memory_context = rag.recall("API design decisions", limit=3)
+            >>>
+            >>> # Use both for comprehensive context
+            >>> print("Documents found:", len(doc_results))
+            >>> print("Related decisions:", len(memory_context))
+        """
+        # Lazy-initialize memory manager (reuse database connection)
+        if not hasattr(self, '_memory_manager'):
+            from .memory import MemoryManager
+            self._memory_manager = MemoryManager(
+                db_dir=str(self.db_dir),
+                model_name=self.model_name,
+                collection_name="project_memory",
+                quiet=self.quiet,
+                database=None  # Uses default ChromaDB
+            )
+
+        return self._memory_manager.search(
+            query=query,
+            memory_types=memory_types,
+            tags=tags,
+            since=since,
+            limit=limit
+        )

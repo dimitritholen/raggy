@@ -87,10 +87,19 @@ class DatabaseManager:
     def get_collection(self):
         """Get the collection for search operations.
 
+        Creates collection if it doesn't exist (for memory system).
+
         Returns:
             Collection instance from abstract interface
         """
-        return self._database.get_collection(self.collection_name)
+        try:
+            return self._database.get_collection(self.collection_name)
+        except (ValueError, RuntimeError):
+            # Collection doesn't exist, create it
+            return self._database.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"description": f"Collection: {self.collection_name}"}
+            )
 
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics.
