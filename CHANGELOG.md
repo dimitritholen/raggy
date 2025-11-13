@@ -2,6 +2,24 @@
 
 All notable changes to the raggy project will be documented in this file.
 
+## 2025-11-13
+
+### Changed
+- **DEPRECATED raggy.py**: Converted monolithic 2,919-line file to thin 243-line wrapper
+  - Reduced from 106 KB to 6.6 KB (94% reduction)
+  - All functionality now imported from modular `raggy/` package
+  - Added prominent deprecation warnings (will remove in v3.0.0)
+  - Maintained 100% backward compatibility - all existing scripts continue working
+  - Shows migration instructions pointing to `raggy_cli.py`
+  - Eliminated massive code duplication between raggy.py and raggy/ package
+
+### Technical Details
+- **Before**: 2,919 lines with CC=18-20 functions, 106 KB file size
+- **After**: 243 lines with CC=1 functions (simple delegates), 6.6 KB file size
+- **Imports preserved**: All classes, functions, and constants re-exported for compatibility
+- **Entry points preserved**: main(), parse_args(), _determine_model() all delegate to raggy_cli
+- **User impact**: Zero breaking changes, clear migration path shown
+
 ## 2025-11-12
 
 ### Added

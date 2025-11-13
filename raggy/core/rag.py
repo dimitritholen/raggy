@@ -1,0 +1,526 @@
+"""Main orchestrator for the RAG system."""
+
+import hashlib
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from ..config.constants import (
+    CHUNK_READ_SIZE,
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_MODEL,
+    DEFAULT_RESULTS,
+)
+from ..config.loader import load_config
+from ..query.processor import QueryProcessor
+from ..scoring.bm25 import BM25Scorer
+from ..scoring.normalization import interpret_score, normalize_cosine_distance
+from ..utils.logging import log_error
+from ..utils.security import validate_path
+from ..utils.symbols import SYMBOLS
+from .database import DatabaseManager
+from .document import DocumentProcessor
+from .search import SearchEngine
+
+
+class UniversalRAG:
+    """Main orchestrator for the RAG system."""
+
+    def __init__(
+        self,
+        docs_dir: str = "./docs",
+        db_dir: str = "./vectordb",
+        model_name: str = DEFAULT_MODEL,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+        quiet: bool = False,
+        config_path: Optional[str] = None,
+    ) -> None:
+        """Initialize the RAG system.
+
+        Args:
+            docs_dir: Directory containing documents
+            db_dir: Directory for database storage
+            model_name: Name of the embedding model
+            chunk_size: Size of text chunks
+            chunk_overlap: Overlap between chunks
+            quiet: If True, suppress output
+            config_path: Optional path to configuration file
+        """
+        self.docs_dir = Path(docs_dir)
+        self.db_dir = Path(db_dir)
+        self.model_name = model_name
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.quiet = quiet
+
+        # Load configuration
+        self.config = load_config(config_path)
+
+        # Initialize components
+        self.document_processor = DocumentProcessor(
+            self.docs_dir, self.config, quiet=self.quiet
+        )
+        self.database_manager = DatabaseManager(
+            self.db_dir, quiet=self.quiet
+        )
+        self.query_processor = QueryProcessor(
+            self.config["search"].get("expansions", {})
+        )
+        self.search_engine = SearchEngine(
+            self.database_manager,
+            self.query_processor,
+            self.config,
+            quiet=self.quiet
+        )
+
+        # Lazy-loaded attributes
+        self._embedding_model = None
+
+    @property
+    def embedding_model(self):
+        """Lazy-load embedding model.
+
+        Returns:
+            SentenceTransformer: Loaded embedding model
+        """
+        if self._embedding_model is None:
+            from sentence_transformers import SentenceTransformer
+
+            if not self.quiet:
+                print(f"Loading embedding model ({self.model_name})...")
+            self._embedding_model = SentenceTransformer(self.model_name)
+        return self._embedding_model
+
+    def build(self, force_rebuild: bool = False) -> None:
+        """Build or update the vector database.
+
+        Args:
+            force_rebuild: If True, delete existing collection first
+        """
+        start_time = time.time()
+
+        # Find documents
+        files = self.document_processor.find_documents()
+        if not files:
+            log_error("No documents found in docs/ directory", quiet=self.quiet)
+            if not self.quiet:
+                print("Solution: Add supported files to the docs/ directory")
+                print("Supported formats: .md, .pdf, .docx, .txt")
+                print("Example: docs/readme.md, docs/guide.pdf, docs/manual.docx, docs/notes.txt")
+            return
+
+        if not self.quiet:
+            print(f"Found {len(files)} documents")
+
+        # Process each document
+        all_documents = []
+        for i, file_path in enumerate(files, 1):
+            if not self.quiet:
+                print(f"[{i}/{len(files)}] Processing {file_path.name}...")
+            docs = self.document_processor.process_document(file_path)
+            all_documents.extend(docs)
+
+        if not all_documents:
+            log_error("No content could be extracted from documents", quiet=self.quiet)
+            if not self.quiet:
+                print("This could mean:")
+                print("- PDF files are corrupted or password-protected")
+                print("- Word documents (.docx) are corrupted")
+                print("- Text files are empty or have encoding issues")
+                print("- Markdown files are empty")
+                print("- Files are not readable")
+                print("Check your files and try again.")
+            return
+
+        if not self.quiet:
+            print(f"Generated {len(all_documents)} text chunks")
+            print("Generating embeddings...")
+
+        # Generate embeddings
+        texts = [doc["text"] for doc in all_documents]
+        embeddings = self.embedding_model.encode(
+            texts, show_progress_bar=not self.quiet
+        )
+
+        # Build index
+        self.database_manager.build_index(
+            all_documents, embeddings, force_rebuild=force_rebuild
+        )
+
+        elapsed = time.time() - start_time
+        print(
+            f"{SYMBOLS['success']} Successfully indexed {len(all_documents)} chunks from {len(files)} files"
+        )
+        print(f"Database saved to: {self.db_dir}")
+        if not self.quiet:
+            print(f"Build completed in {elapsed:.1f} seconds")
+
+    def search(
+        self,
+        query: str,
+        n_results: int = DEFAULT_RESULTS,
+        hybrid: bool = False,
+        expand_query: bool = False,
+        show_scores: Optional[bool] = None,
+    ) -> List[Dict[str, Any]]:
+        """Search the vector database with enhanced capabilities.
+
+        Args:
+            query: Search query
+            n_results: Number of results to return
+            hybrid: If True, use hybrid search
+            expand_query: If True, expand query with synonyms
+            show_scores: If True, show scores in results
+
+        Returns:
+            List[Dict[str, Any]]: Search results
+        """
+        return self.search_engine.search(
+            query,
+            self.embedding_model,
+            n_results,
+            hybrid,
+            expand_query,
+            show_scores
+        )
+
+    def interactive_search(self) -> None:
+        """Interactive search mode."""
+        print(f"\n{SYMBOLS['search']} Interactive Search Mode")
+        print("Type your queries (or 'quit' to exit)")
+        print("-" * 50)
+
+        while True:
+            try:
+                query = input("\nQuery: ").strip()
+                if query.lower() in ["quit", "exit", "q"]:
+                    break
+
+                if not query:
+                    continue
+
+                start_time = time.time()
+                results = self.search(query)
+                elapsed = time.time() - start_time
+
+                if not results:
+                    print("No results found.")
+                    continue
+
+                print(
+                    f"\n{SYMBOLS['found']} Found {len(results)} results (in {elapsed:.3f}s):"
+                )
+                for i, result in enumerate(results, 1):
+                    print(f"\n--- Result {i} ---")
+                    print(f"Source: {result['metadata']['source']}")
+                    print(
+                        f"Chunk: {result['metadata']['chunk_index'] + 1}/{result['metadata']['total_chunks']}"
+                    )
+                    if result["similarity"]:
+                        print(f"Similarity: {result['similarity']:.3f}")
+                    print(f"Text preview: {result['text'][:200]}...")
+
+            except KeyboardInterrupt:
+                break
+
+        print(f"\n{SYMBOLS['bye']} Goodbye!")
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get database statistics.
+
+        Returns:
+            Dict[str, Any]: Database statistics
+        """
+        return self.database_manager.get_stats()
+
+    def run_self_tests(self) -> bool:
+        """Run built-in self-tests for raggy functionality.
+
+        Returns:
+            bool: True if all tests pass
+        """
+        print(f"\n{SYMBOLS['search']} Running raggy self-tests...")
+
+        tests_passed = 0
+        tests_total = 0
+
+        # Test 1: BM25 Scorer
+        try:
+            print("Testing BM25 scorer...")
+            scorer = BM25Scorer()
+            test_docs = ["hello world", "world of warcraft", "hello there"]
+            scorer.fit(test_docs)
+            score = scorer.score("hello world", 0)
+            if score > 0:
+                print("✓ BM25 scorer working correctly")
+                tests_passed += 1
+            else:
+                print("✗ BM25 scorer test failed")
+        except Exception as e:
+            print(f"✗ BM25 scorer error: {e}")
+        tests_total += 1
+
+        # Test 2: Query Processor
+        try:
+            print("Testing query processor...")
+            processor = QueryProcessor()
+            result = processor.process("test query")
+            if result["original"] == "test query" and "terms" in result:
+                print("✓ Query processor working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Query processor test failed")
+        except Exception as e:
+            print(f"✗ Query processor error: {e}")
+        tests_total += 1
+
+        # Test 3: Path validation
+        try:
+            print("Testing path validation...")
+            test_path = Path("test.txt")
+            is_valid = validate_path(test_path)
+            if isinstance(is_valid, bool):
+                print("✓ Path validation working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Path validation test failed")
+        except Exception as e:
+            print(f"✗ Path validation error: {e}")
+        tests_total += 1
+
+        # Test 4: Scoring normalizer
+        try:
+            print("Testing scoring normalizer...")
+            score = normalize_cosine_distance(0.5)
+            interpretation = interpret_score(0.7)
+            if 0 <= score <= 1 and interpretation == "Good":
+                print("✓ Scoring normalizer working correctly")
+                tests_passed += 1
+            else:
+                print("✗ Scoring normalizer test failed")
+        except Exception as e:
+            print(f"✗ Scoring normalizer error: {e}")
+        tests_total += 1
+
+        # Summary
+        print(f"\nTest Results: {tests_passed}/{tests_total} tests passed")
+        if tests_passed == tests_total:
+            print(f"{SYMBOLS['success']} All tests passed!")
+            return True
+        else:
+            print(f"⚠️  {tests_total - tests_passed} tests failed")
+            return False
+
+    def diagnose_system(self) -> None:
+        """Diagnose system setup and dependencies."""
+        import sys
+
+        print(f"\n{SYMBOLS['search']} Diagnosing raggy system setup...")
+
+        # Check Python version
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        print(f"Python version: {python_version}")
+        if sys.version_info >= (3, 8):
+            print("✓ Python version compatible")
+        else:
+            print("⚠️  Python 3.8+ recommended")
+
+        # Check directories
+        print(f"Docs directory: {self.docs_dir}")
+        if self.docs_dir.exists():
+            doc_count = len(list(self.docs_dir.glob("**/*")))
+            print(f"✓ Docs directory exists ({doc_count} files)")
+        else:
+            print("⚠️  Docs directory not found")
+
+        print(f"Database directory: {self.db_dir}")
+        if self.db_dir.exists():
+            print("✓ Database directory exists")
+        else:
+            print("ℹ️  Database directory will be created on first build")
+
+        # Check dependencies
+        print("\nDependency check:")
+        deps_status = []
+
+        try:
+            import chromadb
+            print("✓ ChromaDB installed")
+            deps_status.append(True)
+        except ImportError:
+            print("✗ ChromaDB not installed")
+            deps_status.append(False)
+
+        try:
+            from sentence_transformers import SentenceTransformer
+            print("✓ sentence-transformers installed")
+            deps_status.append(True)
+        except ImportError:
+            print("✗ sentence-transformers not installed")
+            deps_status.append(False)
+
+        try:
+            import PyPDF2
+            print("✓ PyPDF2 installed")
+            deps_status.append(True)
+        except ImportError:
+            print("⚠️  PyPDF2 not installed (PDF support disabled)")
+            deps_status.append(False)
+
+        try:
+            from docx import Document
+            print("✓ python-docx installed")
+            deps_status.append(True)
+        except ImportError:
+            print("⚠️  python-docx not installed (DOCX support disabled)")
+            deps_status.append(False)
+
+        # Model check
+        if all(deps_status[:2]):  # ChromaDB and sentence-transformers required
+            try:
+                from sentence_transformers import SentenceTransformer
+
+                print(f"\nTesting embedding model: {self.model_name}")
+                model = SentenceTransformer(self.model_name)
+                test_embedding = model.encode(["test"])
+                print(f"✓ Embedding model loaded successfully (dimensions: {len(test_embedding[0])})")
+            except Exception as e:
+                print(f"⚠️  Embedding model error: {e}")
+
+        # Database status
+        try:
+            stats = self.get_stats()
+            if "error" not in stats:
+                print(f"\nDatabase status:")
+                print(f"✓ Database accessible")
+                print(f"  Total chunks: {stats['total_chunks']}")
+                print(f"  Documents indexed: {len(stats['sources'])}")
+            else:
+                print(f"\nDatabase status:")
+                print("ℹ️  No database found - run 'python raggy.py build' to create")
+        except Exception as e:
+            print(f"⚠️  Database check error: {e}")
+
+        print(f"\n{SYMBOLS['success']} Diagnosis complete!")
+
+    def validate_configuration(self) -> bool:
+        """Validate configuration and setup.
+
+        Returns:
+            bool: True if configuration is valid
+        """
+        print(f"\n{SYMBOLS['search']} Validating raggy configuration...")
+
+        issues = []
+        issues.extend(self._validate_search_config())
+        issues.extend(self._validate_chunking_config())
+        issues.extend(self._validate_models_config())
+        issues.extend(self._validate_expansions())
+
+        return self._report_validation_results(issues)
+
+    def _validate_search_config(self) -> list:
+        """Validate search configuration parameters.
+
+        Returns:
+            list: List of validation error messages
+        """
+        issues = []
+        search_config = self.config.get("search", {})
+
+        # Validate hybrid_weight
+        hybrid_weight = search_config.get("hybrid_weight", 0.7)
+        if not isinstance(hybrid_weight, (int, float)) or not (0 <= hybrid_weight <= 1):
+            issues.append("Invalid hybrid_weight in search config (should be 0.0-1.0)")
+
+        # Validate chunk_size
+        chunk_size = search_config.get("chunk_size", 1000)
+        if not isinstance(chunk_size, int) or chunk_size < 100:
+            issues.append("Invalid chunk_size in search config (should be >= 100)")
+
+        # Validate max_results
+        max_results = search_config.get("max_results", 5)
+        if not isinstance(max_results, int) or max_results < 1:
+            issues.append("Invalid max_results in search config (should be >= 1)")
+
+        return issues
+
+    def _validate_chunking_config(self) -> list:
+        """Validate chunking configuration parameters.
+
+        Returns:
+            list: List of validation error messages
+        """
+        issues = []
+        chunking_config = self.config.get("chunking", {})
+
+        min_size = chunking_config.get("min_chunk_size", 300)
+        max_size = chunking_config.get("max_chunk_size", 1500)
+
+        if not isinstance(min_size, int) or min_size < 50:
+            issues.append("Invalid min_chunk_size (should be >= 50)")
+
+        if not isinstance(max_size, int) or max_size < min_size:
+            issues.append("max_chunk_size should be >= min_chunk_size")
+
+        return issues
+
+    def _validate_models_config(self) -> list:
+        """Validate model presets configuration.
+
+        Returns:
+            list: List of validation error messages
+        """
+        issues = []
+        models_config = self.config.get("models", {})
+        required_models = ["default", "fast", "multilingual", "accurate"]
+
+        for model_type in required_models:
+            if model_type not in models_config:
+                issues.append(f"Missing {model_type} model in configuration")
+
+        return issues
+
+    def _validate_expansions(self) -> list:
+        """Validate query expansion configuration.
+
+        Returns:
+            list: List of validation error messages
+        """
+        issues = []
+        search_config = self.config.get("search", {})
+        expansions = search_config.get("expansions", {})
+
+        if not expansions:
+            return issues
+
+        for term, expansion_list in expansions.items():
+            if not isinstance(expansion_list, list) or len(expansion_list) < 2:
+                issues.append(
+                    f"Invalid expansion for '{term}' "
+                    "(should be list with original + synonyms)"
+                )
+
+        return issues
+
+    def _report_validation_results(self, issues: list) -> bool:
+        """Report validation results to user.
+
+        Args:
+            issues: List of validation error messages
+
+        Returns:
+            bool: True if no issues found
+        """
+        if issues:
+            print("Configuration issues found:")
+            for issue in issues:
+                print(f"⚠️  {issue}")
+            print(f"\n{len(issues)} issues need attention")
+            return False
+
+        print("✓ Configuration is valid")
+        print(f"{SYMBOLS['success']} All validation checks passed!")
+        return True

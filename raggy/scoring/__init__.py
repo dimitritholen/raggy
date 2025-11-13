@@ -1,0 +1,1 @@
+"""Scoring and normalization functions for search results."""

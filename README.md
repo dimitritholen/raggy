@@ -6,33 +6,38 @@
 
 ## Quick Start
 
-Download `raggy.py` and place it in the root of your project. All you need to do next is put all your documents for the RAG inside a `./docs` folder and **build** the RAG using the command line.
+### Recommended (New Modular Structure)
 
-**Supported file formats:** `.md` (Markdown), `.pdf` (PDF), `.docx` (Word), `.txt` (Plain text)
-
+Use the new modular entry point for best performance and maintainability:
 
 ```bash
 # First-time setup (required)
-python raggy.py init                     # Initialize environment and install dependencies
+python raggy_cli.py init                 # Initialize environment and install dependencies
 
 # Basic usage
-python raggy.py build                    # Index your docs
-python raggy.py search "your query"      # Search with normalized scores
+python raggy_cli.py build                # Index your docs
+python raggy_cli.py search "your query"  # Search with normalized scores
 
-# Enhanced features  
-python raggy.py search "term" --hybrid   # Hybrid semantic + keyword search
-python raggy.py search "api" --expand    # Query expansion
-python raggy.py optimize                 # Benchmark search modes
-
-# Quality assurance (new!)
-python raggy.py test                     # Run built-in self-tests
-python raggy.py diagnose                 # Check system health  
-python raggy.py validate                 # Verify configuration
-
-# Version management
-python raggy.py --version                # Show current version
-# (Automatic update notifications shown once per day when available)
+# Enhanced features
+python raggy_cli.py search "term" --hybrid   # Hybrid semantic + keyword search
+python raggy_cli.py search "api" --expand    # Query expansion
+python raggy_cli.py optimize                 # Benchmark search modes
 ```
+
+### Legacy (Deprecated)
+
+The original `raggy.py` is deprecated but still works for backward compatibility:
+
+```bash
+# ⚠️ DEPRECATED - Will show deprecation warnings
+# Use raggy_cli.py instead (see above)
+python raggy.py build                    # Still works, but shows deprecation notice
+python raggy.py search "your query"      # Still works, but shows deprecation notice
+```
+
+**Supported file formats:** `.md` (Markdown), `.pdf` (PDF), `.docx` (Word), `.txt` (Plain text)
+
+Put all your documents for the RAG inside a `./docs` folder and **build** the RAG using the command line.
 
 ## Configuration
 
