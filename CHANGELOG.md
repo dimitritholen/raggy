@@ -4,6 +4,16 @@ All notable changes to the raggy project will be documented in this file.
 
 ## 2025-11-13
 
+### Fixed
+- **Exception Handling Security**: Replaced all 18 bare `except Exception` handlers with specific exception types
+  - Eliminated OWASP A09:2021 violations (Security Logging Failures)
+  - Removed all silent failure patterns (bare `pass` statements)
+  - Implemented fail-fast design - programming errors now crash as intended
+  - Added specific handlers: `FileNotFoundError`, `PermissionError`, `yaml.YAMLError`, `UnicodeDecodeError`, etc.
+  - Files modified: `raggy/config/loader.py`, `raggy/core/database.py`, `raggy/core/document.py`, `raggy/core/rag.py`, `raggy/core/search.py`, `raggy/setup/dependencies.py`, `raggy_cli.py`
+  - Security verified: 0 HIGH severity issues in bandit scan
+  - Issue #1 from TODO_MEDIUM.md resolved (2-3 hours effort)
+
 ### Changed
 - **DEPRECATED raggy.py**: Converted monolithic 2,919-line file to thin 243-line wrapper
   - Reduced from 106 KB to 6.6 KB (94% reduction)

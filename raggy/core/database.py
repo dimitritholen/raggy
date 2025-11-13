@@ -58,8 +58,9 @@ class DatabaseManager:
                     self.client.delete_collection(self.collection_name)
                     if not self.quiet:
                         print("Deleted existing collection")
-                except Exception:
-                    pass  # Collection may not exist
+                except (ValueError, RuntimeError) as e:
+                    # Collection may not exist - this is expected on first run
+                    log_error(f"Could not delete collection (may not exist)", e, quiet=True)
 
             collection = self.client.get_or_create_collection(
                 name=self.collection_name,
@@ -75,7 +76,8 @@ class DatabaseManager:
                 ids=[doc["id"] for doc in documents],
             )
 
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError) as e:
+            # ChromaDB errors: invalid parameters, database connection issues
             log_error("Failed to build index", e, quiet=self.quiet)
             raise
 
@@ -109,7 +111,9 @@ class DatabaseManager:
                 "sources": sources,
                 "db_path": str(self.db_dir),
             }
-        except Exception:
+        except (ValueError, RuntimeError, OSError) as e:
+            # Database not initialized or connection error
+            log_error("Database stats unavailable", e, quiet=True)
             return {
                 "error": "Database not found. Run 'python raggy.py build' first to index your documents."
             }

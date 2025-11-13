@@ -135,7 +135,16 @@ class DocumentProcessor:
 
             return documents
 
-        except Exception as e:
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            # File system errors during processing
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+        except (UnicodeDecodeError, LookupError) as e:
+            # Text encoding errors
+            handle_file_error(file_path, "process", e, quiet=self.quiet)
+            return []
+        except (ValueError, RuntimeError) as e:
+            # Document parsing errors (PDF/DOCX) or chunking failures
             handle_file_error(file_path, "process", e, quiet=self.quiet)
             return []
 
@@ -176,7 +185,18 @@ class DocumentProcessor:
             warning = f"Warning: {library} not available. Cannot read {file_path.name}"
             print(warning)
             return ""
-        except Exception as e:
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            # File system errors during extraction
+            sanitized_error = sanitize_error_message(str(e))
+            print(f"Warning: Could not access {file_path.name}: {sanitized_error}")
+            return ""
+        except (UnicodeDecodeError, LookupError) as e:
+            # Text encoding errors
+            sanitized_error = sanitize_error_message(str(e))
+            print(f"Warning: Encoding error in {file_path.name}: {sanitized_error}")
+            return ""
+        except (ValueError, RuntimeError, AttributeError) as e:
+            # PDF/DOCX parsing errors (PyPDF2.PdfReader, docx.Document)
             sanitized_error = sanitize_error_message(str(e))
             print(f"Warning: Could not extract text from {file_path.name}: {sanitized_error}")
             return ""

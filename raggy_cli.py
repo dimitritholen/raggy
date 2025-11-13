@@ -144,8 +144,10 @@ def main() -> None:
     try:
         config = load_config(args.config) if hasattr(args, 'config') else {}
         check_for_updates(quiet=args.quiet, config=config)
-    except Exception:
-        pass  # Silently fail - don't interrupt user workflow
+    except (OSError, RuntimeError, ValueError, ConnectionError) as e:
+        # Update check failure - don't interrupt workflow, just log at debug level
+        if not args.quiet:
+            print(f"Debug: Update check failed: {e}")
 
     # Create and execute command
     try:
@@ -193,10 +195,16 @@ def main() -> None:
         command.execute(args, rag)
 
     except ValueError as e:
+        # Invalid command arguments or parameters
         log_error(str(e), quiet=args.quiet)
         sys.exit(1)
-    except Exception as e:
-        log_error(f"Unexpected error executing command '{args.command}'", e, quiet=args.quiet)
+    except (ImportError, ModuleNotFoundError) as e:
+        # Missing dependencies
+        log_error(f"Missing dependency executing command '{args.command}'", e, quiet=args.quiet)
+        sys.exit(1)
+    except (OSError, RuntimeError) as e:
+        # File system or runtime errors
+        log_error(f"Error executing command '{args.command}'", e, quiet=args.quiet)
         sys.exit(1)
 
 

@@ -251,5 +251,7 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False) -> None:
     for package in optional_packages:
         try:
             install_if_missing([package], skip_cache=skip_cache)
-        except Exception:
-            pass  # Silently ignore optional package failures
+        except (subprocess.CalledProcessError, OSError, RuntimeError) as e:
+            # Installation failed for optional package - log but continue
+            # This is expected for packages that may not be available in all environments
+            print(f"Note: Optional package '{package}' could not be installed: {e}")

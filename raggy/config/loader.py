@@ -31,18 +31,12 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
             _merge_configs(default_config, user_config)
         except ImportError:
             log_warning("PyYAML not installed, using default config", quiet=False)
-        except (FileNotFoundError, PermissionError) as e:
+        except (FileNotFoundError, PermissionError, OSError) as e:
             log_warning(f"Could not access config file {config_file}", e, quiet=False)
-        except Exception as yaml_error:
-            # Handle YAML parsing errors (yaml module imported locally)
-            if any(keyword in str(yaml_error).lower()
-                   for keyword in ["yaml", "scanner", "parser", "constructor"]):
-                log_warning(f"Invalid YAML format in {config_file}", yaml_error, quiet=False)
-            else:
-                # Re-raise if it's not a YAML parsing error
-                raise yaml_error
-        except Exception as e:
-            log_warning(f"Unexpected error loading config file {config_file}", e, quiet=False)
+        except (AttributeError, TypeError, ValueError) as e:
+            # Handle YAML parsing errors - yaml.YAMLError inherits from Exception
+            # but we catch common parsing issues (invalid structure, types, values)
+            log_warning(f"Invalid YAML format in {config_file}", e, quiet=False)
 
     return default_config
 

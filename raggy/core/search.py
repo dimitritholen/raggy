@@ -79,8 +79,13 @@ class SearchEngine:
             )
             return final_results
 
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
+            # Search operation errors (invalid query, ChromaDB errors)
             log_error("Search error", e, quiet=self.quiet)
+            return []
+        except (OSError, ConnectionError) as e:
+            # Database connection/access errors
+            log_error("Database access error during search", e, quiet=self.quiet)
             return []
 
     def _get_collection(self):
@@ -91,9 +96,11 @@ class SearchEngine:
         """
         try:
             return self.database_manager.get_collection()
-        except Exception:
+        except (ValueError, RuntimeError, OSError) as e:
+            # Database not initialized or collection doesn't exist
             log_error(
                 "Database collection not found - run 'python raggy.py build' first",
+                e,
                 quiet=self.quiet,
             )
             return None

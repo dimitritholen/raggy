@@ -258,7 +258,8 @@ class UniversalRAG:
                 tests_passed += 1
             else:
                 print("✗ BM25 scorer test failed")
-        except Exception as e:
+        except (ImportError, AttributeError, ValueError, RuntimeError) as e:
+            # Diagnostic test - catch expected errors from BM25 implementation
             print(f"✗ BM25 scorer error: {e}")
         tests_total += 1
 
@@ -272,7 +273,8 @@ class UniversalRAG:
                 tests_passed += 1
             else:
                 print("✗ Query processor test failed")
-        except Exception as e:
+        except (ImportError, AttributeError, ValueError, RuntimeError) as e:
+            # Diagnostic test - catch expected errors from query processing
             print(f"✗ Query processor error: {e}")
         tests_total += 1
 
@@ -286,7 +288,8 @@ class UniversalRAG:
                 tests_passed += 1
             else:
                 print("✗ Path validation test failed")
-        except Exception as e:
+        except (ImportError, AttributeError, ValueError, RuntimeError) as e:
+            # Diagnostic test - catch expected errors from path validation
             print(f"✗ Path validation error: {e}")
         tests_total += 1
 
@@ -300,7 +303,8 @@ class UniversalRAG:
                 tests_passed += 1
             else:
                 print("✗ Scoring normalizer test failed")
-        except Exception as e:
+        except (ImportError, AttributeError, ValueError, RuntimeError) as e:
+            # Diagnostic test - catch expected errors from scoring functions
             print(f"✗ Scoring normalizer error: {e}")
         tests_total += 1
 
@@ -386,7 +390,8 @@ class UniversalRAG:
                 model = SentenceTransformer(self.model_name)
                 test_embedding = model.encode(["test"])
                 print(f"✓ Embedding model loaded successfully (dimensions: {len(test_embedding[0])})")
-            except Exception as e:
+            except (ImportError, OSError, RuntimeError, ValueError) as e:
+                # Diagnostic check - model loading or inference errors
                 print(f"⚠️  Embedding model error: {e}")
 
         # Database status
@@ -400,7 +405,8 @@ class UniversalRAG:
             else:
                 print(f"\nDatabase status:")
                 print("ℹ️  No database found - run 'python raggy.py build' to create")
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
+            # Diagnostic check - database access errors
             print(f"⚠️  Database check error: {e}")
 
         print(f"\n{SYMBOLS['success']} Diagnosis complete!")
