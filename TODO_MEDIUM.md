@@ -135,7 +135,7 @@ def test_programming_errors_not_caught():
 **Severity:** MEDIUM
 **File:** `raggy.py` (4 locations)
 **Estimated Effort:** 1 hour
-**Completed:** 2025-11-13 (commit pending)
+**Completed:** 2025-11-13 (commit c557ea2)
 
 ### Problem
 
@@ -701,7 +701,7 @@ class UniversalRAG:
 ## Progress Tracking
 
 - [x] Issue #1: Broad Exception Handling - 19 Bare "except Exception" Blocks ✅ **COMPLETED** (2025-11-13, commit 3cad682)
-- [x] Issue #2: Silent Exception Handling with 'pass' Statements ✅ **COMPLETED** (2025-11-13, commit pending)
+- [x] Issue #2: Silent Exception Handling with 'pass' Statements ✅ **COMPLETED** (2025-11-13, commit c557ea2)
 - [ ] Issue #3: Multiple High-Complexity Functions Need Refactoring
 - [ ] Issue #4: Tight Coupling Between UniversalRAG and ChromaDB
 - [ ] Issue #5: Missing Input Validation in Public APIs
