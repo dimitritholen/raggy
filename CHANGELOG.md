@@ -14,6 +14,13 @@ All notable changes to the raggy project will be documented in this file.
   - Security verified: 0 HIGH severity issues in bandit scan
   - Issue #1 from TODO_MEDIUM.md resolved (2-3 hours effort)
 
+- **Silent Exception Logging**: Replaced 4 bare `pass` statements with proper logging
+  - Added context-aware logging for cache operations and session file handling
+  - All logging respects quiet mode (`quiet=True` for debug-level issues)
+  - Files modified: `raggy/config/cache.py`, `raggy/utils/updates.py`
+  - No silent failures remain in codebase (verified with `rg` search)
+  - Issue #2 from TODO_MEDIUM.md resolved (1 hour effort)
+
 ### Changed
 - **DEPRECATED raggy.py**: Converted monolithic 2,919-line file to thin 243-line wrapper
   - Reduced from 106 KB to 6.6 KB (94% reduction)

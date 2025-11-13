@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .logging import log_warning
+
 # Version information
 __version__ = "2.0.0"
 
@@ -45,13 +47,18 @@ def check_for_updates(
             cache_age = time.time() - session_file.stat().st_mtime
             if cache_age < SESSION_CACHE_HOURS * 3600:  # 24 hours
                 return
-        except (OSError, AttributeError):
-            pass  # If we can't check file time, proceed with check
+        except (OSError, AttributeError) as e:
+            # Session file unreadable - treat as expired and proceed with update check
+            log_warning(
+                f"Could not read session file {session_file.name}, treating as expired",
+                e,
+                quiet=True  # Debug-level issue, don't show to users
+            )
 
     try:
         # Import urllib only when needed to avoid startup cost
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         # Quick timeout to not delay startup
         api_url = f"https://api.github.com/repos/{github_repo}/releases/latest"
@@ -73,8 +80,13 @@ def check_for_updates(
         # Update session file to mark check as done
         try:
             session_file.touch()
-        except (OSError, PermissionError):
-            pass  # If we can't create session file, just skip tracking
+        except (OSError, PermissionError) as e:
+            # Session file creation is optional - continue without tracking if write fails
+            log_warning(
+                f"Could not create session file {session_file.name}, update check will run again on next startup",
+                e,
+                quiet=True  # Debug-level issue, don't show to users
+            )
 
     except (
         urllib.error.URLError,

@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from ..utils.logging import log_warning
+
 
 def get_cache_file() -> Path:
     """Get path for dependency cache file.
@@ -23,10 +25,15 @@ def load_deps_cache() -> Dict[str, Any]:
     cache_file = get_cache_file()
     if cache_file.exists():
         try:
-            with open(cache_file, "r") as f:
+            with open(cache_file) as f:
                 return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
-            pass
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError) as e:
+            # Cache loading is optional - use empty cache if unavailable
+            log_warning(
+                f"Could not load dependency cache from {cache_file.name}, using empty cache",
+                e,
+                quiet=True  # Debug-level issue, don't show to users
+            )
     return {}
 
 
@@ -40,5 +47,10 @@ def save_deps_cache(cache: Dict[str, Any]) -> None:
     try:
         with open(cache_file, "w") as f:
             json.dump(cache, f)
-    except (PermissionError, IOError):
-        pass  # Silently fail if we can't write cache
+    except (OSError, PermissionError) as e:
+        # Cache saving is optional - continue without cache if write fails
+        log_warning(
+            f"Could not save dependency cache to {cache_file.name}, cache will not persist",
+            e,
+            quiet=True  # Debug-level issue, don't show to users
+        )
