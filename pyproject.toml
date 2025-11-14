@@ -57,7 +57,7 @@ Issues = "https://github.com/example/raggy/issues"
 Documentation = "https://github.com/example/raggy#readme"
 
 [project.scripts]
-raggy = "raggy:main"
+raggy = "raggy_cli:main"
 
 [build-system]
 requires = ["hatchling"]
