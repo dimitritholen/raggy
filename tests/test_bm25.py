@@ -90,16 +90,16 @@ class TestBM25Scorer:
         scorer.fit(documents)
         
         # 'the' appears in 2 out of 3 documents
-        # IDF = log((3 - 2 + 0.5) / (2 + 0.5)) = log(1.5/2.5) = log(0.6)
-        expected_idf_the = math.log((3 - 2 + 0.5) / (2 + 0.5))
+        # IDF = log((N + 1) / df) = log((3 + 1) / 2) = log(2)
+        expected_idf_the = math.log((3 + 1) / 2)
         assert abs(scorer.idf_scores["the"] - expected_idf_the) < 1e-6
-        
-        # 'quick' appears in 2 out of 3 documents  
-        expected_idf_quick = math.log((3 - 2 + 0.5) / (2 + 0.5))
+
+        # 'quick' appears in 2 out of 3 documents
+        expected_idf_quick = math.log((3 + 1) / 2)
         assert abs(scorer.idf_scores["quick"] - expected_idf_quick) < 1e-6
-        
+
         # 'fox' appears in 1 out of 3 documents
-        expected_idf_fox = math.log((3 - 1 + 0.5) / (1 + 0.5))
+        expected_idf_fox = math.log((3 + 1) / 1)
         assert abs(scorer.idf_scores["fox"] - expected_idf_fox) < 1e-6
     
     def test_score_simple_query(self):
