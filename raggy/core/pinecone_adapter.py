@@ -19,17 +19,19 @@ class PineconeAdapter(VectorDatabase):
     def __init__(
         self,
         api_key: str,
-        environment: str,
         index_name: str = "raggy-index",
         dimension: int = 384,
+        cloud: str = "aws",
+        region: str = "us-east-1",
     ):
         """Initialize Pinecone adapter.
 
         Args:
             api_key: Pinecone API key
-            environment: Pinecone environment (e.g., "us-east-1-aws")
             index_name: Name of the Pinecone index
             dimension: Dimension of embeddings (default 384 for all-MiniLM-L6-v2)
+            cloud: Cloud provider ('aws', 'gcp', or 'azure')
+            region: Cloud region (e.g., 'us-east-1', 'us-west-2', 'eu-west-1')
 
         Raises:
             ImportError: If pinecone package not installed
@@ -37,15 +39,17 @@ class PineconeAdapter(VectorDatabase):
 
         """
         try:
-            from pinecone import Pinecone, ServerlessSpec
+            from pinecone import ServerlessSpec
+            from pinecone.grpc import PineconeGRPC as Pinecone
         except ImportError as e:
             raise ImportError(
                 "Pinecone package not installed. "
-                "Install with: pip install pinecone-client"
+                "Install with: pip install \"pinecone[grpc]\""
             ) from e
 
         self.api_key = api_key
-        self.environment = environment
+        self.cloud = cloud
+        self.region = region
         self.index_name = index_name
         self.dimension = dimension
 
@@ -60,7 +64,7 @@ class PineconeAdapter(VectorDatabase):
                     name=index_name,
                     dimension=dimension,
                     metric="cosine",
-                    spec=ServerlessSpec(cloud="aws", region=environment),
+                    spec=ServerlessSpec(cloud=cloud, region=region),
                 )
 
             # Get index reference
@@ -145,7 +149,9 @@ class PineconeAdapter(VectorDatabase):
         # Return stats which includes namespace info
         try:
             stats = self._index.describe_index_stats()
-            return list(stats.get("namespaces", {}).keys())
+            # Pinecone gRPC v7.3.0: DescribeIndexStatsResponse has .namespaces attribute (dict)
+            namespaces = stats.namespaces if hasattr(stats, 'namespaces') else {}
+            return list(namespaces.keys())
         except (KeyError, AttributeError, TypeError):
             # Stats structure changed or index not ready - return empty list
             # This is non-critical, listing is best-effort
@@ -175,6 +181,53 @@ class PineconeCollection(Collection):
         self._index = index
         self._namespace = namespace
         self._dimension = dimension
+
+    @staticmethod
+    def _serialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert list values in metadata to comma-separated strings.
+
+        Pinecone only accepts str, int, float, bool in metadata.
+        This method converts lists to comma-separated strings.
+
+        Args:
+            metadata: Original metadata with possible list values
+
+        Returns:
+            Metadata with lists converted to comma-separated strings
+
+        """
+        serialized = {}
+        for key, value in metadata.items():
+            if isinstance(value, list):
+                # Convert list to comma-separated string
+                serialized[key] = ",".join(str(item) for item in value)
+            else:
+                serialized[key] = value
+        return serialized
+
+    @staticmethod
+    def _deserialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert comma-separated strings back to lists for known list fields.
+
+        Args:
+            metadata: Metadata from Pinecone with comma-separated strings
+
+        Returns:
+            Metadata with comma-separated strings converted back to lists
+
+        """
+        # Known fields that should be lists
+        list_fields = {"tags", "files_involved"}
+
+        deserialized = {}
+        for key, value in metadata.items():
+            if key in list_fields and isinstance(value, str):
+                # Convert comma-separated string back to list
+                # Filter out empty strings from split
+                deserialized[key] = [item.strip() for item in value.split(",") if item.strip()]
+            else:
+                deserialized[key] = value
+        return deserialized
 
     def add(
         self,
@@ -208,9 +261,11 @@ class PineconeCollection(Collection):
             # Prepare vectors for upsert
             vectors = []
             for i, (id_, doc, embedding) in enumerate(zip(ids, documents, embeddings)):
-                metadata = metadatas[i] if metadatas else {}
+                metadata = metadatas[i].copy() if metadatas else {}
                 # Store document text in metadata
                 metadata["document"] = doc
+                # Serialize metadata (convert lists to comma-separated strings)
+                metadata = self._serialize_metadata(metadata)
 
                 vectors.append(
                     {
@@ -233,7 +288,7 @@ class PineconeCollection(Collection):
 
     def query(
         self,
-        query_texts: List[str],
+        query_texts: Optional[List[str]] = None,
         query_embeddings: Optional[List[List[float]]] = None,
         n_results: int = 5,
         where: Optional[Dict[str, Any]] = None,
@@ -287,16 +342,26 @@ class PineconeCollection(Collection):
             metadatas = [[]]
             distances = [[]]
 
-            for match in results.get("matches", []):
-                ids[0].append(match["id"])
+            # Pinecone gRPC v7.3.0: QueryResponse has .matches attribute (list)
+            matches = results.matches if hasattr(results, 'matches') else []
+            for match in matches:
+                # Match object has .id, .metadata, .score attributes
+                match_id = match.id if hasattr(match, 'id') else match.get("id", "")
+                match_metadata = match.metadata if hasattr(match, 'metadata') else match.get("metadata", {})
+                match_score = match.score if hasattr(match, 'score') else match.get("score", 0.0)
+
+                ids[0].append(match_id)
                 # Extract document from metadata
-                metadata = match.get("metadata", {})
+                # Metadata is a dict, can use .get() and .pop()
+                metadata = dict(match_metadata) if match_metadata else {}
                 doc = metadata.pop("document", "")
+                # Deserialize metadata (convert comma-separated strings back to lists)
+                metadata = self._deserialize_metadata(metadata)
                 documents[0].append(doc)
                 metadatas[0].append(metadata)
                 # Pinecone returns similarity score, convert to distance
                 # distance = 1 - similarity for cosine
-                distances[0].append(1.0 - match.get("score", 0.0))
+                distances[0].append(1.0 - match_score)
 
             return {
                 "ids": ids,
@@ -374,10 +439,14 @@ class PineconeCollection(Collection):
                 result_docs = []
                 result_metadatas = []
 
-                for id_, vector_data in response.get("vectors", {}).items():
+                # Pinecone gRPC v7.3.0: FetchResponse has .vectors attribute (dict)
+                vectors_dict = response.vectors if hasattr(response, 'vectors') else {}
+                for id_, vector_data in vectors_dict.items():
                     result_ids.append(id_)
                     metadata = vector_data.get("metadata", {})
                     doc = metadata.pop("document", "")
+                    # Deserialize metadata (convert comma-separated strings back to lists)
+                    metadata = self._deserialize_metadata(metadata)
                     result_docs.append(doc)
                     result_metadatas.append(metadata)
 
@@ -406,8 +475,11 @@ class PineconeCollection(Collection):
         """
         try:
             stats = self._index.describe_index_stats()
-            namespace_stats = stats.get("namespaces", {}).get(self._namespace, {})
-            return namespace_stats.get("vector_count", 0)
+            # Pinecone gRPC v7.3.0: DescribeIndexStatsResponse has .namespaces attribute (dict)
+            namespaces = stats.namespaces if hasattr(stats, 'namespaces') else {}
+            namespace_stats = namespaces.get(self._namespace, {})
+            # namespace_stats is a dict-like object with vector_count
+            return namespace_stats.get("vector_count", 0) if namespace_stats else 0
         except Exception as e:
             raise RuntimeError(f"Pinecone count operation failed: {e}") from e
 
@@ -470,9 +542,12 @@ class PineconeCollection(Collection):
             # Fetch existing vectors
             response = self._index.fetch(ids=ids, namespace=self._namespace)
 
+            # Pinecone gRPC v7.3.0: FetchResponse has .vectors attribute (dict)
+            vectors_dict = response.vectors if hasattr(response, 'vectors') else {}
+
             vectors = []
             for i, id_ in enumerate(ids):
-                existing = response.get("vectors", {}).get(id_)
+                existing = vectors_dict.get(id_)
                 if not existing:
                     raise ValueError(f"ID not found: {id_}")
 
@@ -489,6 +564,8 @@ class PineconeCollection(Collection):
                 if metadatas and i < len(metadatas):
                     metadata.update(metadatas[i])
 
+                # Serialize metadata (convert lists to comma-separated strings)
+                metadata = self._serialize_metadata(metadata)
                 vector["metadata"] = metadata
                 vectors.append(vector)
 

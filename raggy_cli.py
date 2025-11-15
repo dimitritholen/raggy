@@ -126,6 +126,18 @@ Examples:
     )
     parser.add_argument("--version", action="version", version=f"raggy {__version__}")
 
+    # Init command specific arguments
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Force interactive setup questionnaire (for init command)"
+    )
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Skip interactive setup questionnaire (for init command)"
+    )
+
     # Remember command specific arguments
     parser.add_argument(
         "--file",
@@ -139,8 +151,8 @@ Examples:
     parser.add_argument(
         "--type",
         choices=["decision", "solution", "pattern", "learning", "error", "note"],
-        default="note",
-        help="Memory type (for remember command, default: note)"
+        default=None,
+        help="Memory type (for remember command, default: note; for recall command: filter by type)"
     )
     parser.add_argument(
         "--tags",

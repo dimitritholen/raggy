@@ -48,8 +48,8 @@ def create_vector_store(config: Dict[str, Any]) -> VectorDatabase:
             from .pinecone_adapter import PineconeAdapter
         except ImportError as e:
             raise ImportError(
-                "Pinecone adapter requires pinecone-client. "
-                "Install with: pip install pinecone-client"
+                "Pinecone adapter requires pinecone. "
+                "Install with: pip install pinecone"
             ) from e
 
         pinecone_config = config.get("pinecone", {})
@@ -57,7 +57,7 @@ def create_vector_store(config: Dict[str, Any]) -> VectorDatabase:
         if not pinecone_config:
             raise ValueError(
                 "Pinecone configuration missing. Please provide 'pinecone' config with "
-                "'apiKey', 'environment', and 'indexName'."
+                "'apiKey', 'cloud', 'region', and 'indexName'."
             )
 
         api_key = pinecone_config.get("apiKey")
@@ -67,21 +67,41 @@ def create_vector_store(config: Dict[str, Any]) -> VectorDatabase:
                 "or use environment variable: ${PINECONE_API_KEY}"
             )
 
+        # Handle backward compatibility: parse old "environment" format
+        # Old format: "us-east-1-aws" -> region: "us-east-1", cloud: "aws"
+        # New format: separate "cloud" and "region" fields
         environment = pinecone_config.get("environment")
-        if not environment:
-            raise ValueError(
-                "Pinecone environment missing. Please set 'vectorStore.pinecone.environment' "
-                "(e.g., 'us-east-1-aws')"
-            )
+        if environment:
+            # Old format detected - parse it
+            # Cloud providers are: aws, gcp, azure (not numeric)
+            parts = environment.rsplit('-', 1)
+            if len(parts) == 2 and parts[1] in ('aws', 'gcp', 'azure'):
+                # Valid old format: "us-east-1-aws"
+                region = parts[0]
+                cloud = parts[1]
+            else:
+                # No cloud suffix or invalid suffix - treat whole string as region
+                region = environment
+                cloud = "aws"
+        else:
+            # New format - use explicit cloud and region
+            cloud = pinecone_config.get("cloud", "aws")
+            region = pinecone_config.get("region")
+            if not region:
+                raise ValueError(
+                    "Pinecone region missing. Please set 'vectorStore.pinecone.region' "
+                    "(e.g., 'us-east-1') or use legacy 'environment' format (e.g., 'us-east-1-aws')"
+                )
 
         index_name = pinecone_config.get("indexName", "raggy-index")
         dimension = pinecone_config.get("dimension", 384)
 
         return PineconeAdapter(
             api_key=api_key,
-            environment=environment,
             index_name=index_name,
             dimension=dimension,
+            cloud=cloud,
+            region=region,
         )
 
     elif provider_type == "supabase":

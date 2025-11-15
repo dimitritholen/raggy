@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ..config.loader import load_config
+from ..config.raggy_config import RaggyConfig
 from ..utils.logging import log_error
 from ..utils.security import validate_path
 from .database import DatabaseManager
@@ -97,8 +97,19 @@ class MemoryManager:
             else DEFAULT_MEMORY_TYPES.copy()
         )
 
-        # Load configuration
-        self.config = load_config(config_path)
+        # Load configuration (.raggy.json or defaults)
+        try:
+            raggy_config = RaggyConfig(config_path=config_path)
+            self.config = raggy_config.config
+        except (FileNotFoundError, ValueError, RuntimeError) as e:
+            # Log warning and use empty config (will default to ChromaDB)
+            from ..utils.logging import log_warning
+            log_warning(f"Failed to load configuration: {e}. Using defaults.", quiet=self.quiet)
+            self.config = {}
+
+        # Create database adapter from config if not provided
+        if database is None:
+            database = self._create_database_from_config()
 
         # Initialize database manager with memory collection
         self.database_manager = DatabaseManager(
@@ -110,6 +121,92 @@ class MemoryManager:
 
         # Lazy-loaded embedding model
         self._embedding_model = None
+
+    def _create_database_from_config(self) -> Optional[VectorDatabase]:
+        """Create database adapter from configuration.
+
+        Uses RaggyConfig to load .raggy.json and creates the appropriate
+        vector database adapter (ChromaDB, Pinecone, or Supabase).
+
+        Returns:
+            VectorDatabase instance or None for default (ChromaDB via DatabaseManager)
+
+        Note:
+            If vector store creation fails (missing credentials, import errors),
+            returns None to let DatabaseManager use default ChromaDB.
+
+        """
+        if not self.config or 'vectorStore' not in self.config:
+            return None
+
+        try:
+            from copy import deepcopy
+            from .vector_store_factory import create_vector_store
+
+            # Detect embedding dimension from configuration
+            dimension = self._get_embedding_dimension()
+
+            # Extract vectorStore config and inject detected dimension
+            # Use deepcopy to avoid modifying original config
+            vector_config = deepcopy(self.config['vectorStore'])
+
+            # Override dimension in provider-specific config
+            provider = vector_config.get('provider', 'chromadb')
+            if provider in ('pinecone', 'supabase'):
+                # Inject detected dimension into provider config
+                if provider not in vector_config:
+                    vector_config[provider] = {}
+                vector_config[provider]['dimension'] = dimension
+
+            adapter = create_vector_store(vector_config)
+
+            return adapter
+
+        except (ValueError, RuntimeError, ImportError) as e:
+            # Log error and fall back to ChromaDB
+            from ..utils.logging import log_warning
+            log_warning(
+                f"Failed to create vector store from config: {e}. Falling back to ChromaDB.",
+                quiet=self.quiet
+            )
+            return None
+
+    def _get_embedding_dimension(self) -> int:
+        """Detect embedding dimension from configuration.
+
+        Consults the embedding provider configuration to determine the
+        correct vector dimension. This ensures vector stores (Pinecone,
+        Supabase) are created with dimensions matching the embedding model.
+
+        Returns:
+            int: Embedding dimension based on provider and model
+
+        Logic:
+            1. If embedding config exists, create provider and get dimension
+            2. Otherwise, return default (384 for all-MiniLM-L6-v2)
+
+        Examples:
+            OpenAI text-embedding-3-small → 1536
+            OpenAI text-embedding-3-large → 3072
+            sentence-transformers all-MiniLM-L6-v2 → 384
+
+        """
+        if not self.config or 'embedding' not in self.config:
+            return 384  # Default for sentence-transformers all-MiniLM-L6-v2
+
+        try:
+            from ..embeddings.factory import create_embedding_provider
+
+            provider = create_embedding_provider(self.config['embedding'])
+            return provider.get_dimension()
+
+        except Exception as e:
+            from ..utils.logging import log_warning
+            log_warning(
+                f"Failed to detect embedding dimension: {e}. Using default 384.",
+                quiet=self.quiet
+            )
+            return 384
 
     def _validate_init_params(
         self,
@@ -139,18 +236,46 @@ class MemoryManager:
 
     @property
     def embedding_model(self):
-        """Lazy-load embedding model.
+        """Lazy-load embedding model from configuration.
 
         Returns:
-            SentenceTransformer: Loaded embedding model
+            EmbeddingProvider: Loaded embedding provider (OpenAI, SentenceTransformers, etc.)
 
         """
         if self._embedding_model is None:
-            from sentence_transformers import SentenceTransformer
+            # Try to use configured embedding provider
+            if self.config and 'embedding' in self.config:
+                try:
+                    from ..embeddings.factory import create_embedding_provider
 
-            if not self.quiet:
-                print(f"Loading embedding model ({self.model_name})...")
-            self._embedding_model = SentenceTransformer(self.model_name)
+                    provider = create_embedding_provider(self.config['embedding'])
+
+                    if not self.quiet:
+                        print(f"Loading embedding model ({provider.get_model_name()})...")
+
+                    self._embedding_model = provider
+
+                except Exception as e:
+                    from ..utils.logging import log_warning
+                    log_warning(
+                        f"Failed to load configured embedding provider: {e}. "
+                        f"Falling back to default (all-MiniLM-L6-v2).",
+                        quiet=self.quiet
+                    )
+                    # Fall through to default
+
+            # Fallback to default SentenceTransformers provider
+            if self._embedding_model is None:
+                from ..embeddings.sentence_transformers_provider import SentenceTransformersProvider
+
+                if not self.quiet:
+                    print(f"Loading embedding model ({self.model_name})...")
+
+                self._embedding_model = SentenceTransformersProvider(
+                    model_name=self.model_name,
+                    device='cpu'
+                )
+
         return self._embedding_model
 
     def add(
@@ -217,10 +342,9 @@ class MemoryManager:
         # Generate embedding
         try:
             embedding = self.embedding_model.encode(
-                text,
-                convert_to_numpy=True,
-                show_progress_bar=False
-            )
+                texts=text,
+                show_progress=False
+            )[0]  # Extract single embedding from batch result
         except Exception as e:
             log_error("Failed to generate embedding for memory", e, quiet=self.quiet)
             raise RuntimeError(f"Embedding generation failed: {e}") from e
@@ -479,10 +603,9 @@ class MemoryManager:
         # Generate query embedding
         try:
             query_embedding = self.embedding_model.encode(
-                query,
-                convert_to_numpy=True,
-                show_progress_bar=False
-            )
+                texts=query,
+                show_progress=False
+            )[0]  # Extract single embedding from batch result
         except Exception as e:
             log_error("Failed to generate query embedding", e, quiet=self.quiet)
             raise RuntimeError(f"Query embedding generation failed: {e}") from e
@@ -724,7 +847,10 @@ class MemoryManager:
 
             # Add to archive
             for memory in old_memories:
-                embedding = self.embedding_model.encode([memory["text"]])[0]
+                embedding = self.embedding_model.encode(
+                    texts=memory["text"],
+                    show_progress=False
+                )[0]  # Extract single embedding from batch result
                 archive_collection.add(
                     documents=[memory["text"]],
                     embeddings=[embedding],

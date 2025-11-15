@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.memory import MemoryManager
 from ..setup.environment import setup_environment
+from ..setup.interactive import run_interactive_setup
 from ..utils.logging import log_error
 from ..utils.symbols import SYMBOLS
 from .base import Command
@@ -16,10 +17,53 @@ class InitCommand(Command):
     """Initialize project environment."""
 
     def execute(self, args: Any, rag: Any = None) -> None:
-        """Execute init command."""
-        success = setup_environment(quiet=args.quiet)
-        if not success:
-            sys.exit(1)
+        """Execute init command.
+
+        Args:
+            args: Command-line arguments with optional --interactive/--non-interactive flags
+            rag: Unused (init command doesn't require RAG instance)
+
+        """
+        # Determine if interactive mode should be used
+        use_interactive = self._should_use_interactive(args)
+
+        if use_interactive:
+            # Run interactive setup questionnaire
+            success = run_interactive_setup(quiet=args.quiet)
+            if not success:
+                sys.exit(1)
+
+            # Also run environment setup (venv, dependencies, docs directory)
+            print("\n🔧 Setting up environment...")
+            success = setup_environment(quiet=args.quiet)
+            if not success:
+                sys.exit(1)
+        else:
+            # Non-interactive mode: just run environment setup
+            success = setup_environment(quiet=args.quiet)
+            if not success:
+                sys.exit(1)
+
+    def _should_use_interactive(self, args: Any) -> bool:
+        """Determine if interactive mode should be used.
+
+        Args:
+            args: Command-line arguments
+
+        Returns:
+            bool: True if interactive mode should be used
+
+        """
+        # Explicit --non-interactive flag disables interactive mode
+        if hasattr(args, 'non_interactive') and args.non_interactive:
+            return False
+
+        # Explicit --interactive flag enables interactive mode
+        if hasattr(args, 'interactive') and args.interactive:
+            return True
+
+        # Default: use interactive mode if stdin is a TTY (user terminal)
+        return sys.stdin.isatty()
 
 
 class BuildCommand(Command):
@@ -119,6 +163,7 @@ class SearchCommand(Command):
         try:
             memory_manager = MemoryManager(
                 db_dir=args.db_dir if hasattr(args, 'db_dir') else "./vectordb",
+                config_path=args.config if hasattr(args, 'config') else None,
                 quiet=args.quiet
             )
             memory_results = memory_manager.search(query=query, limit=args.results)
@@ -431,13 +476,14 @@ class RememberCommand(Command):
         try:
             memory_manager = MemoryManager(
                 db_dir=args.db_dir if hasattr(args, 'db_dir') else "./vectordb",
+                config_path=args.config if hasattr(args, 'config') else None,
                 quiet=args.quiet
             )
 
             # Store memory
             memory_id = memory_manager.add(
                 text=text,
-                memory_type=args.type if hasattr(args, 'type') else "note",
+                memory_type=args.type if hasattr(args, 'type') and args.type else "note",
                 tags=tags,
                 priority=args.priority if hasattr(args, 'priority') else "medium",
                 files_involved=files
@@ -549,6 +595,7 @@ class RecallCommand(Command):
         try:
             memory_manager = MemoryManager(
                 db_dir=args.db_dir if hasattr(args, 'db_dir') else "./vectordb",
+                config_path=args.config if hasattr(args, 'config') else None,
                 quiet=args.quiet
             )
 
@@ -813,6 +860,7 @@ class ForgetCommand(Command):
         try:
             memory_manager = MemoryManager(
                 db_dir=args.db_dir if hasattr(args, 'db_dir') else "./vectordb",
+                config_path=args.config if hasattr(args, 'config') else None,
                 quiet=args.quiet
             )
 
