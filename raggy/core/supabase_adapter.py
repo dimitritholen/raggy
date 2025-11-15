@@ -287,7 +287,7 @@ class SupabaseCollection(Collection):
 
     def query(
         self,
-        query_texts: List[str],
+        query_texts: Optional[List[str]] = None,
         query_embeddings: Optional[List[List[float]]] = None,
         n_results: int = 5,
         where: Optional[Dict[str, Any]] = None,

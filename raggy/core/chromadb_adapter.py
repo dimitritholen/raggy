@@ -159,6 +159,53 @@ class ChromaCollection(Collection):
         """
         self._collection = collection
 
+    @staticmethod
+    def _serialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert list values in metadata to comma-separated strings.
+
+        ChromaDB 1.3.4+ only accepts str, int, float, bool in metadata.
+        This method converts lists to comma-separated strings.
+
+        Args:
+            metadata: Original metadata with possible list values
+
+        Returns:
+            Metadata with lists converted to comma-separated strings
+
+        """
+        serialized = {}
+        for key, value in metadata.items():
+            if isinstance(value, list):
+                # Convert list to comma-separated string
+                serialized[key] = ",".join(str(item) for item in value)
+            else:
+                serialized[key] = value
+        return serialized
+
+    @staticmethod
+    def _deserialize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert comma-separated strings back to lists for known list fields.
+
+        Args:
+            metadata: Metadata from ChromaDB with comma-separated strings
+
+        Returns:
+            Metadata with comma-separated strings converted back to lists
+
+        """
+        # Known fields that should be lists
+        list_fields = {"tags", "files_involved"}
+
+        deserialized = {}
+        for key, value in metadata.items():
+            if key in list_fields and isinstance(value, str):
+                # Convert comma-separated string back to list
+                # Filter out empty strings from split
+                deserialized[key] = [item.strip() for item in value.split(",") if item.strip()]
+            else:
+                deserialized[key] = value
+        return deserialized
+
     def add(
         self,
         ids: List[str],
@@ -188,12 +235,19 @@ class ChromaCollection(Collection):
             if metadatas and len(metadatas) != len(ids):
                 raise ValueError("metadatas must have the same length as ids")
 
+            # Serialize metadata (convert lists to comma-separated strings)
+            serialized_metadatas = (
+                [self._serialize_metadata(meta) for meta in metadatas]
+                if metadatas
+                else [{} for _ in ids]
+            )
+
             # ChromaDB's add method
             self._collection.add(
                 ids=ids,
                 documents=documents,
                 embeddings=embeddings,
-                metadatas=metadatas or [{} for _ in ids]
+                metadatas=serialized_metadatas
             )
         except ValueError:
             # Re-raise ValueError as-is
@@ -204,7 +258,7 @@ class ChromaCollection(Collection):
 
     def query(
         self,
-        query_texts: List[str],
+        query_texts: Optional[List[str]] = None,
         query_embeddings: Optional[List[List[float]]] = None,
         n_results: int = 5,
         where: Optional[Dict[str, Any]] = None,
@@ -243,6 +297,14 @@ class ChromaCollection(Collection):
                     where=where,
                     include=include
                 )
+
+            # Deserialize metadata in results (convert comma-separated strings back to lists)
+            if "metadatas" in results:
+                results["metadatas"] = [
+                    [self._deserialize_metadata(meta) for meta in query_metas]
+                    for query_metas in results["metadatas"]
+                ]
+
             return results
         except ValueError as e:
             # Re-raise ValueError for invalid parameters
@@ -277,13 +339,21 @@ class ChromaCollection(Collection):
 
         """
         try:
-            return self._collection.get(
+            results = self._collection.get(
                 ids=ids,
                 where=where,
                 limit=limit,
                 offset=offset,
                 include=include
             )
+
+            # Deserialize metadata in results (convert comma-separated strings back to lists)
+            if "metadatas" in results and results["metadatas"]:
+                results["metadatas"] = [
+                    self._deserialize_metadata(meta) for meta in results["metadatas"]
+                ]
+
+            return results
         except ValueError as e:
             raise ValueError(f"Invalid get parameters: {e}") from e
         except Exception as e:
@@ -352,11 +422,18 @@ class ChromaCollection(Collection):
 
         """
         try:
+            # Serialize metadata if provided (convert lists to comma-separated strings)
+            serialized_metadatas = (
+                [self._serialize_metadata(meta) for meta in metadatas]
+                if metadatas
+                else None
+            )
+
             self._collection.update(
                 ids=ids,
                 documents=documents,
                 embeddings=embeddings,
-                metadatas=metadatas
+                metadatas=serialized_metadatas
             )
         except ValueError as e:
             raise ValueError(f"Update failed: {e}") from e
