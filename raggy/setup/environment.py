@@ -14,6 +14,7 @@ def check_uv_available() -> bool:
 
     Returns:
         bool: True if uv is available, False otherwise
+
     """
     try:
         subprocess.check_call(
@@ -38,6 +39,7 @@ def check_environment_setup() -> Tuple[bool, str]:
             - "virtual_environment" if venv is missing
             - "pyproject" if pyproject.toml is missing
             - "invalid_venv" if venv exists but is invalid
+
     """
     venv_path = Path(".venv")
     pyproject_path = Path("pyproject.toml")
@@ -72,6 +74,7 @@ def _create_virtual_environment(quiet: bool = False) -> bool:
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     venv_path = Path(".venv")
     if not venv_path.exists():
@@ -96,6 +99,7 @@ def _create_project_config(quiet: bool = False) -> bool:
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     pyproject_path = Path("pyproject.toml")
     if not pyproject_path.exists():
@@ -140,6 +144,7 @@ def _install_dependencies(quiet: bool = False) -> bool:
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     if not quiet:
         print("Installing dependencies...")
@@ -173,6 +178,7 @@ def _install_magic_library(quiet: bool = False) -> None:
 
     Args:
         quiet: If True, suppress output
+
     """
     magic_package = (
         "python-magic-bin>=0.4.14" if sys.platform == "win32"
@@ -200,6 +206,7 @@ def _create_docs_directory(quiet: bool = False) -> Optional[Path]:
 
     Returns:
         Optional[Path]: Path to docs directory or None on failure
+
     """
     docs_path = Path("docs")
     if not docs_path.exists():
@@ -222,6 +229,7 @@ def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     dev_state_path = docs_path / "DEVELOPMENT_STATE.md"
     if not dev_state_path.exists():
@@ -295,6 +303,7 @@ def _create_example_config(quiet: bool = False) -> bool:
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     config_example_path = Path("raggy_config_example.yaml")
     if not config_example_path.exists():
@@ -389,6 +398,7 @@ def setup_environment(quiet: bool = False) -> bool:
 
     Returns:
         bool: True if successful, False otherwise
+
     """
     if not quiet:
         print("🚀 Setting up raggy environment...")

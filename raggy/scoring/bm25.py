@@ -20,6 +20,7 @@ class BM25Scorer:
         Args:
             k1: Controls term frequency saturation (default 1.2)
             b: Controls length normalization (default 0.75)
+
         """
         self.k1 = k1
         self.b = b
@@ -34,6 +35,7 @@ class BM25Scorer:
 
         Args:
             documents: List of document texts to index
+
         """
         self.doc_count = len(documents)
         self.doc_lengths = []
@@ -72,8 +74,9 @@ class BM25Scorer:
 
         Returns:
             float: BM25 relevance score (non-negative)
+
         """
-        if doc_index >= len(self.term_frequencies):
+        if doc_index < 0 or doc_index >= len(self.term_frequencies):
             return 0.0
 
         query_terms = self._tokenize(query)
@@ -103,6 +106,7 @@ class BM25Scorer:
 
         Returns:
             List[str]: List of lowercase tokens
+
         """
         # Convert to lowercase and extract alphanumeric sequences using pre-compiled pattern
         return WORD_PATTERN.findall(text.lower())

@@ -32,6 +32,7 @@ class SearchEngine:
             query_processor: Query processor instance
             config: Configuration dictionary
             quiet: If True, suppress output
+
         """
         self.database_manager = database_manager
         self.query_processor = query_processor
@@ -61,6 +62,7 @@ class SearchEngine:
 
         Returns:
             List[Dict[str, Any]]: Search results with scores and metadata
+
         """
         collection = self._get_collection()
         if collection is None:
@@ -74,10 +76,9 @@ class SearchEngine:
             formatted_results = self._format_results(
                 raw_results, query, query_info, hybrid
             )
-            final_results = self._post_process_results(
+            return self._post_process_results(
                 formatted_results, query, n_results, show_scores
             )
-            return final_results
 
         except (ValueError, RuntimeError) as e:
             # Search operation errors (invalid query, ChromaDB errors)
@@ -93,6 +94,7 @@ class SearchEngine:
 
         Returns:
             Collection instance or None if not available
+
         """
         try:
             return self.database_manager.get_collection()
@@ -114,6 +116,7 @@ class SearchEngine:
 
         Returns:
             tuple: (query_info dict, processed_query string)
+
         """
         if expand_query:
             query_info = self.query_processor.process(query)
@@ -141,6 +144,7 @@ class SearchEngine:
 
         Returns:
             Dict[str, Any]: Raw search results from ChromaDB
+
         """
         # Initialize BM25 scorer for hybrid search
         if hybrid and self._bm25_scorer is None:
@@ -169,6 +173,7 @@ class SearchEngine:
 
         Returns:
             List[Dict[str, Any]]: Formatted results with scores
+
         """
         formatted_results = []
 
@@ -199,6 +204,7 @@ class SearchEngine:
 
         Returns:
             Dict[str, Any]: Formatted result with scores
+
         """
         distance = raw_results["distances"][0][index] if "distances" in raw_results else None
         semantic_score = normalize_cosine_distance(distance) if distance is not None else 0
@@ -236,6 +242,7 @@ class SearchEngine:
 
         Returns:
             tuple: (keyword_score, final_score)
+
         """
         if hybrid and self._bm25_scorer:
             keyword_score = self._bm25_scorer.score(query, index)
@@ -267,6 +274,7 @@ class SearchEngine:
 
         Returns:
             List[Dict[str, Any]]: Post-processed results
+
         """
         # Sort by final score and limit
         formatted_results.sort(key=lambda x: x["final_score"], reverse=True)
@@ -291,6 +299,7 @@ class SearchEngine:
 
         Args:
             collection: ChromaDB collection instance
+
         """
         if self._documents_cache is None:
             # Get all documents from collection
@@ -311,6 +320,7 @@ class SearchEngine:
 
         Returns:
             List[Dict[str, Any]]: Reranked results
+
         """
         if len(results) <= 2:
             return results
@@ -346,6 +356,7 @@ class SearchEngine:
 
         Returns:
             str: Highlighted text excerpt
+
         """
         context_chars = context_chars or self.config["search"]["context_chars"]
 
@@ -366,6 +377,7 @@ class SearchEngine:
 
         Returns:
             int: Position of first match or -1 if no match found
+
         """
         for term in query_terms:
             pos = text_lower.find(term)
@@ -382,6 +394,7 @@ class SearchEngine:
 
         Returns:
             str: Excerpt from beginning of text
+
         """
         if len(text) > context_chars:
             return text[:context_chars] + "..."
@@ -397,6 +410,7 @@ class SearchEngine:
 
         Returns:
             str: Excerpt with context around match
+
         """
         start = max(0, match_pos - context_chars // 2)
         end = min(len(text), match_pos + context_chars // 2)
@@ -418,6 +432,7 @@ class SearchEngine:
 
         Returns:
             int: Adjusted position at word boundary
+
         """
         if direction == 'left':
             while pos > 0 and text[pos] != " ":
@@ -438,6 +453,7 @@ class SearchEngine:
 
         Returns:
             str: Excerpt with appropriate ellipsis
+
         """
         if start > 0:
             excerpt = "..." + excerpt

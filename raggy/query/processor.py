@@ -27,6 +27,7 @@ class QueryProcessor:
 
         Args:
             custom_expansions: Optional dictionary of term expansions
+
         """
         # Default expansions - can be overridden via config
         self.expansions = custom_expansions or {
@@ -54,25 +55,43 @@ class QueryProcessor:
                 - must_have: List of required terms
                 - must_not: List of excluded terms
                 - terms: List of query terms
+
         """
-        original = query.strip()
+        # Preserve original query exactly as provided
+        original = query
+        # Use cleaned version for processing
+        cleaned = query.strip()
 
         # Detect query type
-        query_type = self._detect_type(original)
+        query_type = self._detect_type(cleaned)
 
         # Handle exact phrase queries (quoted)
         if query_type == "exact":
-            phrase = QUOTED_PHRASE_PATTERN.findall(original)[0]
-            return {
-                "processed": phrase,
-                "original": original,
-                "type": "exact",
-                "boost_exact": True,
-                "terms": [phrase],
-            }
+            # Defensively check if pattern found valid quoted phrase
+            matches = QUOTED_PHRASE_PATTERN.findall(cleaned)
+            if matches:
+                phrase = matches[0]
+                return {
+                    "processed": phrase,
+                    "original": original,
+                    "type": "exact",
+                    "boost_exact": True,
+                    "terms": [phrase],
+                }
+            # Handle empty quotes case
+            elif '""' in cleaned:
+                return {
+                    "processed": "",
+                    "original": original,
+                    "type": "exact",
+                    "boost_exact": True,
+                    "terms": [],
+                }
+            # If no valid match found, fall back to keyword search
+            query_type = "keyword"
 
         # Expand terms
-        expanded = self._expand_query(original)
+        expanded = self._expand_query(cleaned)
 
         # Extract boolean operators
         must_have, must_not = self._extract_operators(expanded)
@@ -95,8 +114,11 @@ class QueryProcessor:
 
         Returns:
             str: Query type (exact, question, boolean, or keyword)
+
         """
-        if '"' in query:
+        # Check for valid quoted phrases (including empty quotes "")
+        # Pattern matches non-empty quotes, but we also check for paired empty quotes
+        if QUOTED_PHRASE_PATTERN.findall(query) or '""' in query:
             return "exact"
 
         question_words = ["how", "what", "why", "when", "where", "who"]
@@ -118,6 +140,7 @@ class QueryProcessor:
 
         Returns:
             str: Expanded query with OR clauses for synonyms
+
         """
         expanded = query.lower()
         for term, expansions in self.expansions.items():
@@ -136,6 +159,7 @@ class QueryProcessor:
 
         Returns:
             Tuple[List[str], List[str]]: (must_have_terms, must_not_terms)
+
         """
         must_have = []
         must_not = []

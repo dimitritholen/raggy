@@ -32,8 +32,8 @@ class VectorDatabase(ABC):
         Raises:
             ValueError: If collection already exists
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def get_collection(self, name: str) -> "Collection":
@@ -48,8 +48,8 @@ class VectorDatabase(ABC):
         Raises:
             ValueError: If collection does not exist
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def get_or_create_collection(
@@ -66,8 +66,8 @@ class VectorDatabase(ABC):
 
         Raises:
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def delete_collection(self, name: str) -> None:
@@ -79,8 +79,8 @@ class VectorDatabase(ABC):
         Raises:
             ValueError: If collection does not exist
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def list_collections(self) -> List[str]:
@@ -91,8 +91,8 @@ class VectorDatabase(ABC):
 
         Raises:
             RuntimeError: If database operation fails
+
         """
-        pass
 
 
 class Collection(ABC):
@@ -121,8 +121,8 @@ class Collection(ABC):
         Raises:
             ValueError: If input lists have different lengths
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def query(
@@ -155,8 +155,8 @@ class Collection(ABC):
         Raises:
             ValueError: If query parameters are invalid
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def get(
@@ -182,8 +182,8 @@ class Collection(ABC):
         Raises:
             ValueError: If parameters are invalid
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def count(self) -> int:
@@ -194,8 +194,8 @@ class Collection(ABC):
 
         Raises:
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def delete(
@@ -212,8 +212,8 @@ class Collection(ABC):
         Raises:
             ValueError: If neither ids nor where is provided
             RuntimeError: If database operation fails
+
         """
-        pass
 
     @abstractmethod
     def update(
@@ -234,5 +234,5 @@ class Collection(ABC):
         Raises:
             ValueError: If IDs don't exist or parameters are invalid
             RuntimeError: If database operation fails
+
         """
-        pass

@@ -12,5 +12,6 @@ class Command:
         Args:
             args: Command line arguments
             rag: UniversalRAG instance (optional for some commands)
+
         """
         raise NotImplementedError

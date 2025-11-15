@@ -11,6 +11,7 @@ def normalize_cosine_distance(distance: float) -> float:
 
     Returns:
         float: Normalized score (0-1 range, where 1 is perfect match)
+
     """
     # Convert cosine distance (0-2) to similarity (0-1)
     # Distance of 0 = similarity of 1 (identical)
@@ -34,6 +35,7 @@ def normalize_hybrid_score(
 
     Returns:
         float: Combined normalized score (0-1)
+
     """
     # Normalize BM25 score to 0-1 range (sigmoid-like transformation)
     # BM25 scores typically range from 0-20, we'll use a soft cap at 10
@@ -57,6 +59,7 @@ def interpret_score(score: float) -> str:
 
     Returns:
         str: Human-readable score interpretation
+
     """
     if score >= 0.9:
         return "Excellent"

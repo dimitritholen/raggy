@@ -1,6 +1,6 @@
 """Configuration constants for the RAG system."""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Version information
 __version__ = "2.0.0"

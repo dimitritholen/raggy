@@ -12,6 +12,7 @@ def get_cache_file() -> Path:
 
     Returns:
         Path: Path to the cache file
+
     """
     return Path.cwd() / ".raggy_deps_cache.json"
 
@@ -21,6 +22,7 @@ def load_deps_cache() -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: Cached dependency information or empty dict if not found
+
     """
     cache_file = get_cache_file()
     if cache_file.exists():
@@ -42,6 +44,7 @@ def save_deps_cache(cache: Dict[str, Any]) -> None:
 
     Args:
         cache: Cache dictionary to save
+
     """
     cache_file = get_cache_file()
     try:

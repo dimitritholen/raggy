@@ -8,6 +8,7 @@ def get_symbols() -> Dict[str, str]:
 
     Returns:
         Dict[str, str]: Dictionary of symbol names to their display representations
+
     """
     try:
         # Test if terminal supports unicode

@@ -23,6 +23,7 @@ class ChromaDBAdapter(VectorDatabase):
 
         Args:
             path: Directory path for ChromaDB persistent storage
+
         """
         self._client = chromadb.PersistentClient(path=path)
 
@@ -41,6 +42,7 @@ class ChromaDBAdapter(VectorDatabase):
         Raises:
             ValueError: If collection already exists
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             chroma_collection = self._client.create_collection(
@@ -67,6 +69,7 @@ class ChromaDBAdapter(VectorDatabase):
         Raises:
             ValueError: If collection does not exist
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             chroma_collection = self._client.get_collection(name=name)
@@ -92,6 +95,7 @@ class ChromaDBAdapter(VectorDatabase):
 
         Raises:
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             chroma_collection = self._client.get_or_create_collection(
@@ -111,6 +115,7 @@ class ChromaDBAdapter(VectorDatabase):
         Raises:
             ValueError: If collection does not exist
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             self._client.delete_collection(name=name)
@@ -129,6 +134,7 @@ class ChromaDBAdapter(VectorDatabase):
 
         Raises:
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             collections = self._client.list_collections()
@@ -149,6 +155,7 @@ class ChromaCollection(Collection):
 
         Args:
             collection: ChromaDB collection instance
+
         """
         self._collection = collection
 
@@ -170,6 +177,7 @@ class ChromaCollection(Collection):
         Raises:
             ValueError: If input lists have different lengths
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             # Validate input lengths
@@ -217,6 +225,7 @@ class ChromaCollection(Collection):
         Raises:
             ValueError: If query parameters are invalid
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             # ChromaDB allows either query_texts or query_embeddings
@@ -265,6 +274,7 @@ class ChromaCollection(Collection):
         Raises:
             ValueError: If parameters are invalid
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             return self._collection.get(
@@ -287,6 +297,7 @@ class ChromaCollection(Collection):
 
         Raises:
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             return self._collection.count()
@@ -307,6 +318,7 @@ class ChromaCollection(Collection):
         Raises:
             ValueError: If neither ids nor where is provided
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             if ids is None and where is None:
@@ -337,6 +349,7 @@ class ChromaCollection(Collection):
         Raises:
             ValueError: If IDs don't exist or parameters are invalid
             RuntimeError: If ChromaDB operation fails
+
         """
         try:
             self._collection.update(

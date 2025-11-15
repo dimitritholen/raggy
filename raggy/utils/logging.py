@@ -13,6 +13,7 @@ def log_error(message: str, error: Optional[Exception] = None, *, quiet: bool = 
         message: The error message to log
         error: Optional exception to include in the message
         quiet: If True, suppress output
+
     """
     if quiet:
         return
@@ -31,6 +32,7 @@ def log_warning(message: str, error: Optional[Exception] = None, *, quiet: bool 
         message: The warning message to log
         error: Optional exception to include in the message
         quiet: If True, suppress output
+
     """
     if quiet:
         return
@@ -50,6 +52,7 @@ def handle_file_error(file_path: Path, operation: str, error: Exception, *, quie
         operation: The operation being performed (e.g., 'read', 'write')
         error: The exception that occurred
         quiet: If True, suppress output
+
     """
     if isinstance(error, (FileNotFoundError, PermissionError)):
         log_error(f"Cannot {operation} {file_path.name} - {type(error).__name__}", quiet=quiet)

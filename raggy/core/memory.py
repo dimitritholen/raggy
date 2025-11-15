@@ -12,6 +12,7 @@ Example:
     ...     tags=["architecture", "database"]
     ... )
     >>> results = memory.search("database architecture decisions")
+
 """
 
 import hashlib
@@ -26,8 +27,8 @@ from ..utils.security import validate_path
 from .database import DatabaseManager
 from .database_interface import VectorDatabase
 
-# Memory type constants
-MEMORY_TYPES = {
+# Default memory type constants
+DEFAULT_MEMORY_TYPES = {
     "decision",
     "solution",
     "pattern",
@@ -35,6 +36,9 @@ MEMORY_TYPES = {
     "error",
     "note"
 }
+
+# Backward compatibility
+MEMORY_TYPES = DEFAULT_MEMORY_TYPES
 
 # Priority levels
 PRIORITY_LEVELS = {"high", "medium", "low"}
@@ -62,6 +66,7 @@ class MemoryManager:
         quiet: bool = False,
         config_path: Optional[str] = None,
         database: Optional[VectorDatabase] = None,
+        allowed_categories: Optional[set] = None,
     ) -> None:
         """Initialize the Memory Manager.
 
@@ -72,9 +77,12 @@ class MemoryManager:
             quiet: If True, suppress output
             config_path: Optional path to configuration file
             database: Optional VectorDatabase implementation (defaults to ChromaDB)
+            allowed_categories: Optional set of allowed memory categories.
+                If None, uses DEFAULT_MEMORY_TYPES
 
         Raises:
             ValueError: If parameters are invalid
+
         """
         self._validate_init_params(db_dir, model_name, collection_name)
 
@@ -82,6 +90,12 @@ class MemoryManager:
         self.model_name = model_name
         self.collection_name = collection_name
         self.quiet = quiet
+
+        # Set allowed categories (dynamic or default)
+        self.allowed_categories = (
+            allowed_categories if allowed_categories is not None
+            else DEFAULT_MEMORY_TYPES.copy()
+        )
 
         # Load configuration
         self.config = load_config(config_path)
@@ -112,6 +126,7 @@ class MemoryManager:
 
         Raises:
             ValueError: If parameters are invalid
+
         """
         if not db_dir or not isinstance(db_dir, str):
             raise ValueError("db_dir must be a non-empty string")
@@ -128,6 +143,7 @@ class MemoryManager:
 
         Returns:
             SentenceTransformer: Loaded embedding model
+
         """
         if self._embedding_model is None:
             from sentence_transformers import SentenceTransformer
@@ -168,6 +184,7 @@ class MemoryManager:
         Raises:
             ValueError: If parameters are invalid
             RuntimeError: If memory storage fails
+
         """
         # Validate inputs
         self._validate_add_params(text, memory_type, priority, confidence)
@@ -248,6 +265,7 @@ class MemoryManager:
 
         Raises:
             ValueError: If parameters are invalid
+
         """
         # Validate text
         if not isinstance(text, str) or not text.strip():
@@ -260,9 +278,9 @@ class MemoryManager:
             )
 
         # Validate memory_type
-        if memory_type not in MEMORY_TYPES:
+        if memory_type not in self.allowed_categories:
             raise ValueError(
-                f"memory_type must be one of {sorted(MEMORY_TYPES)}, got '{memory_type}'"
+                f"memory_type must be one of {sorted(self.allowed_categories)}, got '{memory_type}'"
             )
 
         # Validate priority
@@ -289,6 +307,7 @@ class MemoryManager:
 
         Raises:
             ValueError: If any path is invalid or contains path traversal
+
         """
         validated = []
         for file_path in files:
@@ -310,6 +329,7 @@ class MemoryManager:
 
         Returns:
             Dict with 'branch' and 'commit' keys (values may be None)
+
         """
         context = {"branch": None, "commit": None}
 
@@ -350,6 +370,7 @@ class MemoryManager:
 
         Returns:
             str: Unique memory ID (format: mem_YYYYMMDD_HHMMSS_hash)
+
         """
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         content_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()[:8]
@@ -386,6 +407,7 @@ class MemoryManager:
 
         Returns:
             Dict[str, Any]: Metadata dictionary
+
         """
         metadata = {
             "memory_id": memory_id,
@@ -440,6 +462,7 @@ class MemoryManager:
         Raises:
             ValueError: If parameters are invalid
             RuntimeError: If search fails
+
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be a non-empty string")
@@ -449,7 +472,7 @@ class MemoryManager:
 
         # Validate memory_types if provided
         if memory_types:
-            invalid = set(memory_types) - MEMORY_TYPES
+            invalid = set(memory_types) - self.allowed_categories
             if invalid:
                 raise ValueError(f"Invalid memory types: {invalid}")
 
@@ -509,6 +532,7 @@ class MemoryManager:
 
         Returns:
             Optional[Dict[str, Any]]: Metadata filter or None
+
         """
         where = {}
 
@@ -537,6 +561,7 @@ class MemoryManager:
         Raises:
             ValueError: If memory_id is invalid
             RuntimeError: If deletion fails
+
         """
         if not isinstance(memory_id, str) or not memory_id.strip():
             raise ValueError("memory_id must be a non-empty string")
@@ -566,6 +591,7 @@ class MemoryManager:
         Raises:
             ValueError: If memory_id is invalid
             RuntimeError: If retrieval fails
+
         """
         if not isinstance(memory_id, str) or not memory_id.strip():
             raise ValueError("memory_id must be a non-empty string")
@@ -598,6 +624,7 @@ class MemoryManager:
 
         Raises:
             RuntimeError: If count operation fails
+
         """
         try:
             collection = self.database_manager.get_collection()
@@ -616,6 +643,7 @@ class MemoryManager:
 
         Raises:
             RuntimeError: If deletion fails
+
         """
         try:
             collection = self.database_manager.get_collection()
@@ -651,6 +679,7 @@ class MemoryManager:
         Raises:
             ValueError: If older_than format is invalid
             RuntimeError: If archive operation fails
+
         """
         if not isinstance(older_than, str) or not older_than.strip():
             raise ValueError("older_than must be a non-empty string")
@@ -735,6 +764,7 @@ class MemoryManager:
 
         Raises:
             ValueError: If parameters are invalid
+
         """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must be a non-empty string")
@@ -824,6 +854,7 @@ class Memory:
         ...     query="current architecture decisions",
         ...     max_tokens=2000
         ... )
+
     """
 
     def __init__(
@@ -834,6 +865,7 @@ class Memory:
         quiet: bool = False,
         config_path: Optional[str] = None,
         database: Optional[VectorDatabase] = None,
+        allowed_categories: Optional[set] = None,
     ) -> None:
         """Initialize the Memory system.
 
@@ -845,6 +877,8 @@ class Memory:
             quiet: If True, suppress output messages. Default: False
             config_path: Optional path to configuration file
             database: Optional VectorDatabase implementation. If None, uses ChromaDB.
+            allowed_categories: Optional set of allowed memory categories.
+                If None, uses DEFAULT_MEMORY_TYPES
 
         Raises:
             ValueError: If parameters are invalid
@@ -858,6 +892,10 @@ class Memory:
             >>>
             >>> # Quiet mode (no output)
             >>> memory = Memory(quiet=True)
+            >>>
+            >>> # Custom categories
+            >>> memory = Memory(allowed_categories={"meeting", "research", "bug"})
+
         """
         self._manager = MemoryManager(
             db_dir=db_dir,
@@ -866,6 +904,7 @@ class Memory:
             quiet=quiet,
             config_path=config_path,
             database=database,
+            allowed_categories=allowed_categories,
         )
 
         # Expose commonly used attributes
@@ -946,6 +985,7 @@ class Memory:
             ...     memory_type="pattern",
             ...     tags=["design-pattern", "document-processing"]
             ... )
+
         """
         return self._manager.add(
             text=text,
@@ -1021,6 +1061,7 @@ class Memory:
             ...     print(f"Priority: {top_result['metadata']['priority']}")
             ...     print(f"Tags: {', '.join(top_result['metadata'].get('tags', []))}")
             ...     print(f"Text: {top_result['text']}")
+
         """
         return self._manager.search(
             query=query,
@@ -1090,6 +1131,7 @@ class Memory:
             Tags: design-pattern, document-processing
             <BLANKLINE>
             Using Strategy pattern for document parsers...
+
         """
         # Search with filters if provided
         memories = self.search(
@@ -1150,6 +1192,7 @@ class Memory:
             >>> mem_id = memory.add("Temporary note", memory_type="note")
             >>> memory.delete(mem_id)
             True
+
         """
         return self._manager.delete(memory_id)
 
@@ -1172,6 +1215,7 @@ class Memory:
             >>> entry = memory.get_by_id(mem_id)
             >>> print(entry['text'])
             Test memory
+
         """
         return self._manager.get_by_id(memory_id)
 
@@ -1191,6 +1235,7 @@ class Memory:
             >>> memory = Memory()
             >>> total = memory.count()
             >>> decisions = memory.count(where={"memory_type": "decision"})
+
         """
         return self._manager.count(where)
 
@@ -1209,6 +1254,7 @@ class Memory:
             >>> memory = Memory()
             >>> count = memory.delete_all()
             >>> print(f"Deleted {count} memories")
+
         """
         return self._manager.delete_all()
 
@@ -1233,6 +1279,7 @@ class Memory:
             >>> # Archive memories older than 6 months
             >>> count = memory.archive("2024-07-01T00:00:00Z")
             >>> print(f"Archived {count} old memories")
+
         """
         return self._manager.archive(older_than)
 
@@ -1290,6 +1337,7 @@ def remember(
         ...     tags=["api", "bug-fix"],
         ...     files_involved=["api/main.py"]
         ... )
+
     """
     memory = Memory(db_dir=db_dir, quiet=True)
     return memory.add(
@@ -1345,6 +1393,7 @@ def recall(
         ...     tags=["api"],
         ...     limit=5
         ... )
+
     """
     memory = Memory(db_dir=db_dir, quiet=True)
     return memory.search(

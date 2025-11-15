@@ -19,6 +19,7 @@ def validate_path(file_path: Path, base_path: Optional[Path] = None) -> bool:
 
     Returns:
         bool: True if the path is safe (within base directory), False otherwise
+
     """
     try:
         # Resolve the path to get absolute path
@@ -48,9 +49,9 @@ def sanitize_error_message(error_msg: str) -> str:
 
     Returns:
         str: Sanitized error message with sensitive paths removed
+
     """
     # Remove potentially sensitive path information using pre-compiled patterns
     sanitized = WINDOWS_PATH_PATTERN.sub('', error_msg)  # Windows paths
     sanitized = UNIX_PATH_PATTERN.sub('/', sanitized)  # Unix paths
-    sanitized = FILE_URL_PATTERN.sub('[FILE_PATH]', sanitized)
-    return sanitized
+    return FILE_URL_PATTERN.sub('[FILE_PATH]', sanitized)

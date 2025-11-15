@@ -108,6 +108,7 @@ class SearchCommand(Command):
             query: Search query string
             args: Command-line arguments
             rag: RAG instance for document search
+
         """
         # Search documents
         doc_results = rag.search(
@@ -247,6 +248,7 @@ class OptimizeCommand(Command):
 
         Returns:
             bool: True if database is valid
+
         """
         if "error" in stats or stats["total_chunks"] == 0:
             print("Error: No indexed content found. Run 'build' first.")
@@ -261,6 +263,7 @@ class OptimizeCommand(Command):
 
         Returns:
             List[str]: Test queries
+
         """
         test_queries = []
         doc_names = list(stats["sources"].keys())
@@ -291,6 +294,7 @@ class OptimizeCommand(Command):
 
         Returns:
             tuple: (semantic_scores, hybrid_scores)
+
         """
         results_semantic = []
         results_hybrid = []
@@ -318,6 +322,7 @@ class OptimizeCommand(Command):
 
         Returns:
             float: Average score
+
         """
         results = rag.search(query, n_results=3, hybrid=hybrid)
         if not results:
@@ -330,6 +335,7 @@ class OptimizeCommand(Command):
         Args:
             results_semantic: Semantic search scores
             results_hybrid: Hybrid search scores
+
         """
         avg_semantic = sum(results_semantic) / len(results_semantic)
         avg_hybrid = sum(results_hybrid) / len(results_hybrid)
@@ -346,6 +352,7 @@ class OptimizeCommand(Command):
         Args:
             avg_semantic: Average semantic score
             avg_hybrid: Average hybrid score
+
         """
         if avg_hybrid > avg_semantic * 1.1:
             print(
@@ -406,6 +413,7 @@ class RememberCommand(Command):
         Args:
             args: Command-line arguments with memory parameters
             rag: Unused (memory system uses separate collection)
+
         """
         # Get memory text from various sources
         text = self._get_memory_text(args)
@@ -457,6 +465,7 @@ class RememberCommand(Command):
 
         Returns:
             str: Memory text content (empty string if none provided)
+
         """
         # Priority 1: Positional argument (query is used for both search and remember)
         if hasattr(args, 'query') and args.query:
@@ -495,6 +504,7 @@ class RememberCommand(Command):
 
         Returns:
             List[str]: List of cleaned tag strings
+
         """
         if not tags_str:
             return []
@@ -509,6 +519,7 @@ class RememberCommand(Command):
 
         Returns:
             List[str]: List of file paths
+
         """
         if not files_str:
             return []
@@ -525,6 +536,7 @@ class RecallCommand(Command):
         Args:
             args: Command-line arguments with search parameters
             rag: RAG instance (used for --include-docs)
+
         """
         # Get query from positional args
         if not hasattr(args, 'query') or not args.query:
@@ -588,6 +600,7 @@ class RecallCommand(Command):
 
         Returns:
             Optional[str]: ISO timestamp or None
+
         """
         # Priority 1: --since (explicit ISO date)
         if hasattr(args, 'since') and args.since:
@@ -610,6 +623,7 @@ class RecallCommand(Command):
 
         Raises:
             ValueError: If format is invalid
+
         """
         import re
         from datetime import datetime, timedelta, timezone
@@ -648,6 +662,7 @@ class RecallCommand(Command):
 
         Returns:
             List[str]: List of cleaned tag strings
+
         """
         if not tags_str:
             return []
@@ -661,6 +676,7 @@ class RecallCommand(Command):
             results: List of memory search results
             query: Original search query
             quiet: Quiet mode flag
+
         """
         if not results:
             print("No memory results found.")
@@ -721,6 +737,7 @@ class RecallCommand(Command):
             memory_results: Memory search results
             doc_results: Document search results
             quiet: Quiet mode flag
+
         """
         # Combine results with type indicator
         combined = []
@@ -790,6 +807,7 @@ class ForgetCommand(Command):
         Args:
             args: Command-line arguments with forget parameters
             rag: Unused (memory system uses separate collection)
+
         """
         # Initialize memory manager
         try:
@@ -838,6 +856,7 @@ class ForgetCommand(Command):
             memory_manager: MemoryManager instance
             memory_id: Memory ID to delete
             quiet: Quiet mode flag
+
         """
         # Get memory to show user before deletion
         memory = memory_manager.get_by_id(memory_id)
@@ -886,6 +905,7 @@ class ForgetCommand(Command):
             memory_manager: MemoryManager instance
             older_than: Relative time string (e.g., "90d", "6m")
             quiet: Quiet mode flag
+
         """
         # Convert relative time to ISO timestamp
         iso_date = self._parse_relative_time(older_than)
@@ -937,6 +957,7 @@ class ForgetCommand(Command):
         Args:
             memory_manager: MemoryManager instance
             quiet: Quiet mode flag
+
         """
         # Count total memories
         total_count = memory_manager.count()
@@ -971,6 +992,7 @@ class ForgetCommand(Command):
 
         Returns:
             bool: True if confirmed, False otherwise
+
         """
         if quiet:
             return True
@@ -991,6 +1013,7 @@ class ForgetCommand(Command):
 
         Returns:
             bool: True if user typed exactly 'yes', False otherwise
+
         """
         if quiet:
             return True
@@ -1013,6 +1036,7 @@ class ForgetCommand(Command):
 
         Raises:
             ValueError: If format is invalid
+
         """
         import re
         from datetime import datetime, timedelta, timezone

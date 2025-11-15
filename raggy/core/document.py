@@ -31,6 +31,7 @@ class DocumentProcessor:
             docs_dir: Directory containing documents
             config: Configuration dictionary
             quiet: If True, suppress output
+
         """
         self.docs_dir = docs_dir
         self.config = config
@@ -49,6 +50,7 @@ class DocumentProcessor:
 
         Returns:
             List[Path]: Sorted list of document paths
+
         """
         if not self.docs_dir.exists():
             if not self.quiet:
@@ -72,6 +74,7 @@ class DocumentProcessor:
 
         Returns:
             List[Dict[str, Any]]: List of document chunks with metadata
+
         """
         if not self.quiet:
             print(f"Processing: {file_path.relative_to(self.docs_dir)}")
@@ -104,6 +107,7 @@ class DocumentProcessor:
 
         Returns:
             bool: True if file is valid
+
         """
         # Security check
         if not validate_path(file_path, self.docs_dir):
@@ -130,6 +134,7 @@ class DocumentProcessor:
 
         Returns:
             str: Extracted text or empty string if extraction failed
+
         """
         file_extension = file_path.suffix.lower()
         handler = self._file_handlers.get(file_extension)
@@ -158,6 +163,7 @@ class DocumentProcessor:
 
         Returns:
             List of document chunks with metadata
+
         """
         chunk_data = self._chunk_text(text)
         file_hash = self._get_file_hash(file_path)
@@ -189,6 +195,7 @@ class DocumentProcessor:
 
         Returns:
             str: SHA256 hash of the file
+
         """
         hash_sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
@@ -208,6 +215,7 @@ class DocumentProcessor:
 
         Returns:
             str: Extracted text or empty string on error
+
         """
         try:
             result = extraction_method(file_path)
@@ -265,7 +273,7 @@ class DocumentProcessor:
 
     def _extract_md_content(self, file_path: Path) -> str:
         """Extract content from Markdown file."""
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             return file.read()
 
     def _extract_docx_content(self, file_path: Path) -> str:
@@ -296,11 +304,11 @@ class DocumentProcessor:
         """Extract content from plain text file with encoding fallback."""
         # Try UTF-8 first
         try:
-            with open(file_path, "r", encoding="utf-8") as file:
+            with open(file_path, encoding="utf-8") as file:
                 return file.read()
         except UnicodeDecodeError:
             # Fallback to latin-1 for older files
-            with open(file_path, "r", encoding="latin-1") as file:
+            with open(file_path, encoding="latin-1") as file:
                 return file.read()
 
     def _chunk_text(
@@ -320,6 +328,7 @@ class DocumentProcessor:
 
         Returns:
             List[Dict[str, Any]]: List of chunks with metadata
+
         """
         chunk_size = chunk_size or self.config["search"].get("chunk_size", DEFAULT_CHUNK_SIZE)
         overlap = overlap or self.config["search"].get("chunk_overlap", DEFAULT_CHUNK_OVERLAP)
@@ -425,6 +434,7 @@ class DocumentProcessor:
 
         Returns:
             int: Target chunk size
+
         """
         lines = content.split("\n")
         is_list_content = any(
@@ -449,6 +459,7 @@ class DocumentProcessor:
 
         Returns:
             str: Content with header prepended if needed
+
         """
         if header and self.config["chunking"]["preserve_headers"]:
             return f"{header}\n\n{content}"
@@ -466,11 +477,19 @@ class DocumentProcessor:
 
         Returns:
             Dict[str, Any]: Chunk with metadata
+
         """
+        # Calculate header depth by counting leading # characters
+        header_depth = 0
+        if header:
+            match = re.match(r"^(#+)", header)
+            if match:
+                header_depth = len(match.group(1))
+
         metadata = {
             "chunk_type": "smart",
             "section_header": header,
-            "header_depth": len(re.findall(r"^#", header or "")),
+            "header_depth": header_depth,
         }
 
         if chunk_index > 0:
@@ -491,6 +510,7 @@ class DocumentProcessor:
 
         Returns:
             List[Dict[str, Any]]: List of chunks with metadata
+
         """
         chunks = []
         start = 0
@@ -520,6 +540,7 @@ class DocumentProcessor:
 
         Returns:
             int: End position for chunk
+
         """
         end = start + target_size
 
@@ -551,6 +572,7 @@ class DocumentProcessor:
 
         Returns:
             int: Position of paragraph break or -1 if not found
+
         """
         # Look back from end for paragraph break
         search_start = max(start + target_size - 300, start)
@@ -572,6 +594,7 @@ class DocumentProcessor:
 
         Returns:
             int: Position of sentence break or -1 if not found
+
         """
         # Look back from end for sentence boundary
         search_start = max(start + target_size - 200, start)

@@ -23,6 +23,7 @@ class UpdateChecker:
 
         Args:
             config: Optional configuration dictionary with update settings
+
         """
         self.config = config or {}
         self.updates_config = self.config.get("updates", {})
@@ -34,6 +35,7 @@ class UpdateChecker:
 
         Args:
             quiet: If True, suppress output
+
         """
         if not self._should_check(quiet):
             return
@@ -52,6 +54,7 @@ class UpdateChecker:
 
         Returns:
             bool: True if check should proceed
+
         """
         if quiet:
             return False
@@ -66,6 +69,7 @@ class UpdateChecker:
 
         Returns:
             bool: True if recently checked
+
         """
         if not self.session_file.exists():
             return False
@@ -86,6 +90,7 @@ class UpdateChecker:
 
         Returns:
             Optional[str]: Latest version string or None if fetch fails
+
         """
         try:
             import urllib.error
@@ -122,6 +127,7 @@ class UpdateChecker:
 
         Returns:
             bool: True if latest version is different from current
+
         """
         return latest_version != __version__
 
@@ -130,6 +136,7 @@ class UpdateChecker:
 
         Args:
             latest_version: Version string to display
+
         """
         github_url = getattr(self, '_cached_release_url', None)
         if not github_url:
@@ -158,6 +165,7 @@ def check_for_updates(
     Args:
         quiet: If True, suppress output
         config: Optional configuration dictionary with update settings
+
     """
     checker = UpdateChecker(config)
     checker.check(quiet)

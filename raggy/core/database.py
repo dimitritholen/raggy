@@ -25,6 +25,7 @@ class DatabaseManager:
             collection_name: Name of the collection
             quiet: If True, suppress output
             database: Optional VectorDatabase implementation (defaults to ChromaDB)
+
         """
         self.db_dir = db_dir
         self.collection_name = collection_name
@@ -39,6 +40,7 @@ class DatabaseManager:
 
         Returns:
             VectorDatabase instance
+
         """
         return self._database
 
@@ -54,6 +56,7 @@ class DatabaseManager:
             documents: List of document chunks with text and metadata
             embeddings: Document embeddings array
             force_rebuild: If True, delete existing collection first
+
         """
         try:
             if force_rebuild:
@@ -63,7 +66,7 @@ class DatabaseManager:
                         print("Deleted existing collection")
                 except (ValueError, RuntimeError) as e:
                     # Collection may not exist - this is expected on first run
-                    log_error(f"Could not delete collection (may not exist)", e, quiet=True)
+                    log_error("Could not delete collection (may not exist)", e, quiet=True)
 
             collection = self._database.get_or_create_collection(
                 name=self.collection_name,
@@ -91,6 +94,7 @@ class DatabaseManager:
 
         Returns:
             Collection instance from abstract interface
+
         """
         try:
             return self._database.get_collection(self.collection_name)
@@ -106,6 +110,7 @@ class DatabaseManager:
 
         Returns:
             Dict[str, Any]: Statistics including chunk count and sources
+
         """
         try:
             collection = self.get_collection()

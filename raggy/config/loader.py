@@ -15,6 +15,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: Merged configuration dictionary
+
     """
     default_config = DEFAULT_CONFIG.copy()
 
@@ -24,7 +25,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         try:
             import yaml
 
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 user_config = yaml.safe_load(f)
 
             # Merge with defaults
@@ -47,6 +48,7 @@ def _merge_configs(default: Dict[str, Any], user: Dict[str, Any]) -> None:
     Args:
         default: Default configuration dictionary (modified in place)
         user: User configuration dictionary to merge
+
     """
     for key, value in user.items():
         if (

@@ -1,12 +1,10 @@
 """Main orchestrator for the RAG system."""
 
-import hashlib
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..config.constants import (
-    CHUNK_READ_SIZE,
     DEFAULT_CHUNK_OVERLAP,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_MODEL,
@@ -60,6 +58,7 @@ class UniversalRAG:
         Raises:
             TypeError: If parameters have incorrect types
             ValueError: If parameters are out of valid range or logically inconsistent
+
         """
         # Validate all inputs
         self._validate_init_params(docs_dir, db_dir, model_name, chunk_size, chunk_overlap)
@@ -114,6 +113,7 @@ class UniversalRAG:
         Raises:
             TypeError: If parameters have incorrect types
             ValueError: If parameters are out of valid range or logically inconsistent
+
         """
         # Validate chunk_size
         if not isinstance(chunk_size, int):
@@ -149,6 +149,7 @@ class UniversalRAG:
 
         Returns:
             str: Name of the collection
+
         """
         return self.database_manager.collection_name
 
@@ -158,6 +159,7 @@ class UniversalRAG:
 
         Returns:
             Database client from manager
+
         """
         # For backward compatibility with tests
         return getattr(self.database_manager, '_database', None)
@@ -168,6 +170,7 @@ class UniversalRAG:
 
         Returns:
             SentenceTransformer: Loaded embedding model
+
         """
         if self._embedding_model is None:
             from sentence_transformers import SentenceTransformer
@@ -182,6 +185,7 @@ class UniversalRAG:
 
         Args:
             force_rebuild: If True, delete existing collection first
+
         """
         start_time = time.time()
 
@@ -204,6 +208,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if documents found
+
         """
         if not files:
             log_error("No documents found in docs/ directory", quiet=self.quiet)
@@ -225,6 +230,7 @@ class UniversalRAG:
 
         Returns:
             List of document chunks with metadata
+
         """
         all_documents = []
         for i, file_path in enumerate(files, 1):
@@ -242,6 +248,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if content extracted
+
         """
         if not all_documents:
             log_error("No content could be extracted from documents", quiet=self.quiet)
@@ -269,6 +276,7 @@ class UniversalRAG:
         Args:
             all_documents: List of document chunks
             force_rebuild: Whether to force rebuild
+
         """
         if not self.quiet:
             print("Generating embeddings...")
@@ -289,6 +297,7 @@ class UniversalRAG:
             num_chunks: Number of chunks indexed
             num_files: Number of files processed
             start_time: Build start time
+
         """
         elapsed = time.time() - start_time
         print(
@@ -321,6 +330,7 @@ class UniversalRAG:
         Raises:
             TypeError: If parameters have incorrect types
             ValueError: If parameters are out of valid range
+
         """
         # Validate query
         if not isinstance(query, str):
@@ -393,6 +403,7 @@ class UniversalRAG:
 
         Returns:
             Dict[str, Any]: Database statistics
+
         """
         return self.database_manager.get_stats()
 
@@ -401,6 +412,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if all tests pass
+
         """
         print(f"\n{SYMBOLS['search']} Running raggy self-tests...")
 
@@ -432,6 +444,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if test passes
+
         """
         try:
             print("Testing BM25 scorer...")
@@ -454,6 +467,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if test passes
+
         """
         try:
             print("Testing query processor...")
@@ -474,6 +488,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if test passes
+
         """
         try:
             print("Testing path validation...")
@@ -494,6 +509,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if test passes
+
         """
         try:
             print("Testing scoring normalizer...")
@@ -518,6 +534,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if all tests passed
+
         """
         print(f"\nTest Results: {tests_passed}/{tests_total} tests passed")
         if tests_passed == tests_total:
@@ -546,6 +563,7 @@ class UniversalRAG:
 
         Args:
             version_info: sys.version_info object
+
         """
         python_version = f"{version_info.major}.{version_info.minor}.{version_info.micro}"
         print(f"Python version: {python_version}")
@@ -574,6 +592,7 @@ class UniversalRAG:
 
         Returns:
             list: Status of each dependency (True if installed)
+
         """
         print("\nDependency check:")
         deps_status = []
@@ -595,6 +614,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if dependency is installed
+
         """
         try:
             if import_from:
@@ -622,6 +642,7 @@ class UniversalRAG:
 
         Args:
             deps_status: List of dependency statuses
+
         """
         if not all(deps_status[:2]):  # ChromaDB and sentence-transformers required
             return
@@ -640,9 +661,9 @@ class UniversalRAG:
         """Check database accessibility and stats."""
         try:
             stats = self.get_stats()
-            print(f"\nDatabase status:")
+            print("\nDatabase status:")
             if "error" not in stats:
-                print(f"✓ Database accessible")
+                print("✓ Database accessible")
                 print(f"  Total chunks: {stats['total_chunks']}")
                 print(f"  Documents indexed: {len(stats['sources'])}")
             else:
@@ -655,6 +676,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if configuration is valid
+
         """
         print(f"\n{SYMBOLS['search']} Validating raggy configuration...")
 
@@ -671,6 +693,7 @@ class UniversalRAG:
 
         Returns:
             list: List of validation error messages
+
         """
         issues = []
         search_config = self.config.get("search", {})
@@ -697,6 +720,7 @@ class UniversalRAG:
 
         Returns:
             list: List of validation error messages
+
         """
         issues = []
         chunking_config = self.config.get("chunking", {})
@@ -717,6 +741,7 @@ class UniversalRAG:
 
         Returns:
             list: List of validation error messages
+
         """
         issues = []
         models_config = self.config.get("models", {})
@@ -733,6 +758,7 @@ class UniversalRAG:
 
         Returns:
             list: List of validation error messages
+
         """
         issues = []
         search_config = self.config.get("search", {})
@@ -758,6 +784,7 @@ class UniversalRAG:
 
         Returns:
             bool: True if no issues found
+
         """
         if issues:
             print("Configuration issues found:")
@@ -838,6 +865,7 @@ class UniversalRAG:
         Note:
             Memory is stored in a separate collection ("project_memory") from
             documents, enabling different lifecycle management.
+
         """
         # Lazy-initialize memory manager (reuse database connection)
         if not hasattr(self, '_memory_manager'):
@@ -909,6 +937,7 @@ class UniversalRAG:
             >>> # Use both for comprehensive context
             >>> print("Documents found:", len(doc_results))
             >>> print("Related decisions:", len(memory_context))
+
         """
         # Lazy-initialize memory manager (reuse database connection)
         if not hasattr(self, '_memory_manager'):

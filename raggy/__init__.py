@@ -20,6 +20,7 @@ Example:
     ...     tags=["architecture", "database"]
     ... )
     >>> results = memory.search("database decisions")
+
 """
 
 from raggy.cli.factory import CommandFactory

@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from ..config.cache import load_deps_cache, save_deps_cache
 from .environment import check_environment_setup, check_uv_available
@@ -25,6 +25,7 @@ class PackageInstaller:
 
         Args:
             skip_cache: If True, skip cache and always check/install
+
         """
         self.skip_cache = skip_cache
         self.cache: Dict[str, Any] = {} if skip_cache else load_deps_cache()
@@ -35,6 +36,7 @@ class PackageInstaller:
 
         Args:
             packages: List of package specifications (e.g., "chromadb>=0.4.0")
+
         """
         self._validate_environment()
 
@@ -62,6 +64,7 @@ class PackageInstaller:
 
         Args:
             env_issue: Type of environment issue
+
         """
         error_messages = {
             "virtual_environment": (
@@ -87,6 +90,7 @@ class PackageInstaller:
 
         Args:
             package_spec: Package specification (e.g., "chromadb>=0.4.0")
+
         """
         package_name = self._extract_package_name(package_spec)
 
@@ -110,6 +114,7 @@ class PackageInstaller:
 
         Returns:
             str: Clean package name
+
         """
         return package_spec.split(">=")[0].split("==")[0].split("[")[0]
 
@@ -121,6 +126,7 @@ class PackageInstaller:
 
         Returns:
             str: Import name for use with importlib
+
         """
         return self.IMPORT_NAME_MAP.get(package_name, package_name.replace("-", "_"))
 
@@ -132,6 +138,7 @@ class PackageInstaller:
 
         Returns:
             bool: True if package can be imported
+
         """
         import_name = self._get_import_name(package_name)
         try:
@@ -145,6 +152,7 @@ class PackageInstaller:
 
         Args:
             package_name: Package name to cache
+
         """
         if "installed" not in self.cache:
             self.cache["installed"] = {}
@@ -157,6 +165,7 @@ class PackageInstaller:
         Args:
             package_spec: Full package specification for pip
             package_name: Package name for error handling
+
         """
         print(f"Installing {package_name}...")
         try:
@@ -171,6 +180,7 @@ class PackageInstaller:
 
         Args:
             package_name: Package that failed to install
+
         """
         if package_name != "python-magic-bin":
             return
@@ -192,6 +202,7 @@ def install_if_missing(packages: List[str], skip_cache: bool = False) -> None:
     Args:
         packages: List of package specifications (e.g., "chromadb>=0.4.0")
         skip_cache: If True, skip cache and always check/install
+
     """
     installer = PackageInstaller(skip_cache=skip_cache)
     installer.install_packages(packages)
@@ -203,6 +214,7 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False) -> None:
     Args:
         skip_cache: If True, skip cache and always check/install
         quiet: If True, suppress output (unused but kept for compatibility)
+
     """
 
     # Check if we're in a virtual environment
@@ -223,9 +235,9 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False) -> None:
     # Verify we're using the virtual environment's Python
     venv_path = Path(".venv")
     if sys.platform == "win32":
-        expected_python = str(venv_path / "Scripts" / "python.exe")
+        str(venv_path / "Scripts" / "python.exe")
     else:
-        expected_python = str(venv_path / "bin" / "python")
+        str(venv_path / "bin" / "python")
 
     # Auto-install required packages if missing
     required_packages = [

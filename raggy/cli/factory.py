@@ -48,6 +48,7 @@ class CommandFactory:
 
         Raises:
             ValueError: If command name is unknown
+
         """
         command_class = cls._commands.get(command_name)
         if command_class is None:
