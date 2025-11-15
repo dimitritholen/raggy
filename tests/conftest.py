@@ -250,7 +250,11 @@ def temp_db_dir(tmp_path) -> str:
 def memory_manager(temp_db_dir):
     """MemoryManager instance with real ChromaDB in temporary directory."""
     from raggy.core.memory import MemoryManager
-    manager = MemoryManager(db_dir=temp_db_dir, quiet=True)
+    from raggy.core.chromadb_adapter import ChromaDBAdapter
+
+    # Explicitly use ChromaDB for tests, bypassing .raggy.json config
+    chromadb_adapter = ChromaDBAdapter(path=temp_db_dir)
+    manager = MemoryManager(db_dir=temp_db_dir, quiet=True, database=chromadb_adapter)
     yield manager
     # Cleanup handled by temp_db_dir fixture
 
@@ -259,7 +263,11 @@ def memory_manager(temp_db_dir):
 def memory_api(temp_db_dir):
     """Memory public API instance with real ChromaDB."""
     from raggy.core.memory import Memory
-    memory = Memory(db_dir=temp_db_dir, quiet=True)
+    from raggy.core.chromadb_adapter import ChromaDBAdapter
+
+    # Explicitly use ChromaDB for tests, bypassing .raggy.json config
+    chromadb_adapter = ChromaDBAdapter(path=temp_db_dir)
+    memory = Memory(db_dir=temp_db_dir, quiet=True, database=chromadb_adapter)
     yield memory
     # Cleanup handled by temp_db_dir fixture
 
