@@ -103,6 +103,13 @@ python raggy_cli.py search "authentication" --include-memory
 - **Time-based Filtering**: Find recent memories or archive old ones
 - **Unified Search**: Search both documents and memories together
 
+### Cloud Vector Databases (New in v2.0)
+- **ChromaDB**: Local-first, zero-config vector storage (default)
+- **Pinecone**: Serverless cloud vector database with auto-scaling
+- **Supabase**: PostgreSQL + pgvector for full-stack applications
+- **OpenAI Embeddings**: High-quality embeddings with text-embedding-3-small/large
+- **Interactive Setup**: Guided configuration wizard for cloud databases
+
 ### Model Presets
 - **Fast**: Quick responses, lower accuracy (`paraphrase-MiniLM-L3-v2`)
 - **Balanced**: Good balance of speed and accuracy (default)
@@ -110,6 +117,59 @@ python raggy_cli.py search "authentication" --include-memory
 - **Accurate**: Best quality, slower processing
 
 ## Configuration
+
+### Local Configuration (ChromaDB)
+
+Create `.raggy.json` for local vector storage:
+
+```json
+{
+  "vectorStore": {
+    "provider": "chromadb",
+    "chromadb": {
+      "path": "./vectordb"
+    }
+  },
+  "embedding": {
+    "provider": "sentenceTransformers",
+    "sentenceTransformers": {
+      "model": "all-MiniLM-L6-v2"
+    }
+  }
+}
+```
+
+### Cloud Configuration (Pinecone + OpenAI)
+
+Create `.raggy.json` for cloud deployment:
+
+```json
+{
+  "vectorStore": {
+    "provider": "pinecone",
+    "pinecone": {
+      "apiKey": "${PINECONE_API_KEY}",
+      "environment": "us-east-1-aws",
+      "indexName": "raggy-index",
+      "dimension": 1536
+    }
+  },
+  "embedding": {
+    "provider": "openai",
+    "openai": {
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "text-embedding-3-small"
+    }
+  }
+}
+```
+
+**Interactive setup wizard:**
+```bash
+python raggy_cli.py init --interactive
+```
+
+### Legacy YAML Configuration
 
 Create `raggy_config.yaml` for custom settings:
 
@@ -196,17 +256,24 @@ python raggy_cli.py forget --archive --older-than 90d
 
 ## Requirements
 
+### Core Requirements
 - Python 3.8+
-- ChromaDB 0.4.0+
-- sentence-transformers 2.2.0+
+- ChromaDB 0.4.0+ (included by default)
+- sentence-transformers 2.2.0+ (included by default)
 - PyPDF2 3.0.0+ (for PDF support)
 - python-docx 1.0.0+ (for DOCX support)
+
+### Optional Cloud Database Support
+- **Pinecone**: `pip install "raggy[pinecone]"` or `pip install pinecone[grpc]`
+- **Supabase**: `pip install "raggy[supabase]"` or `pip install supabase`
+- **OpenAI Embeddings**: `pip install openai` (for text-embedding-3-small/large)
 
 ## Documentation
 
 Comprehensive guides and references:
 
 ### Getting Started
+- [Setup Guide](./docs/setup-guide.md) - Quick setup for local and cloud deployments
 - [Installation Guide](./docs/installation.md) - Detailed installation instructions
 - [Quick Start Tutorial](./docs/quickstart.md) - Step-by-step tutorial
 - [Configuration Guide](./docs/configuration.md) - All configuration options
@@ -214,6 +281,7 @@ Comprehensive guides and references:
 ### Core Features
 - [Document Search (RAG)](./docs/rag-system.md) - RAG system documentation
 - [Memory System](./docs/memory-system.md) - AI development memory guide
+- [Vector Databases](./docs/vector-databases.md) - ChromaDB, Pinecone, Supabase guide
 - [Hybrid Search](./docs/hybrid-search.md) - Semantic + keyword search
 - [Query Expansion](./docs/query-expansion.md) - Automatic query enhancement
 
