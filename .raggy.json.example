@@ -1,0 +1,70 @@
+{
+  "_comment": "Raggy Configuration File - Copy to .raggy.json and customize",
+  "_description": "This file shows all available configuration options for Raggy RAG system",
+
+  "vectorStore": {
+    "_comment": "Vector database configuration - choose provider and configure settings",
+    "provider": "chromadb",
+
+    "chromadb": {
+      "_comment": "Local vector database using ChromaDB (default, no API key needed)",
+      "path": "./vectordb"
+    },
+
+    "pinecone": {
+      "_comment": "Pinecone cloud vector database - requires API key and environment",
+      "_install": "pip install raggy[pinecone]",
+      "apiKey": "${PINECONE_API_KEY}",
+      "environment": "us-east-1-aws",
+      "indexName": "raggy-index",
+      "dimension": 384
+    },
+
+    "supabase": {
+      "_comment": "Supabase (PostgreSQL + pgvector) - requires project URL and API key",
+      "_install": "pip install raggy[supabase]",
+      "url": "${SUPABASE_URL}",
+      "apiKey": "${SUPABASE_ANON_KEY}",
+      "dimension": 384
+    }
+  },
+
+  "embedding": {
+    "_comment": "Embedding model configuration - choose provider and model",
+    "provider": "sentence-transformers",
+
+    "sentenceTransformers": {
+      "_comment": "Local embedding models (default, no API key needed)",
+      "_models": "all-MiniLM-L6-v2 (384-dim, fast), all-mpnet-base-v2 (768-dim, accurate)",
+      "model": "all-MiniLM-L6-v2",
+      "device": "cpu"
+    },
+
+    "openai": {
+      "_comment": "OpenAI embedding models - requires API key",
+      "_install": "pip install raggy[openai]",
+      "_models": "text-embedding-3-small (1536-dim), text-embedding-3-large (3072-dim)",
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "text-embedding-3-small"
+    }
+  },
+
+  "memory": {
+    "_comment": "Memory categories configuration - customize or extend default categories",
+    "categoriesMode": "append",
+
+    "_modesDescription": {
+      "append": "Use defaults + add custom categories - remove specified",
+      "replace": "Ignore defaults, use only replacement categories",
+      "custom": "Use only custom added categories (no defaults)"
+    },
+
+    "categories": {
+      "add": ["meeting", "research", "architecture-review"],
+      "remove": ["error"],
+      "replace": ["bug", "feature", "refactor", "docs", "test"]
+    },
+
+    "_defaultCategories": ["decision", "solution", "pattern", "learning", "error", "note"]
+  }
+}

@@ -1,0 +1,25 @@
+File,Line,Severity,Type,Rule,Description,Auto-Fix,Estimated Effort
+raggy/core/supabase_adapter.py,466,BLOCKING,Complexity,CC=12,SupabaseCollection.update exceeds complexity threshold,No,1-2 hours
+raggy/core/supabase_adapter.py,352,BLOCKING,Complexity,CC=10,SupabaseCollection.get at complexity threshold,No,1 hour
+raggy/core/pinecone_adapter.py,143,HIGH,Exception,Broad catch,Catching bare Exception instead of specific types,No,15 min
+raggy/core/supabase_adapter.py,71,HIGH,Exception,SIM105,Suppressible exception - use contextlib.suppress,Yes,Auto
+raggy/core/supabase_adapter.py,205,HIGH,Exception,Broad catch,Catching bare Exception instead of specific types,No,15 min
+raggy/core/pinecone_adapter.py,253,MEDIUM,Style,E501,Line too long (89 > 88 characters),No,2 min
+raggy/core/pinecone_adapter.py,428,MEDIUM,Complexity,CC=10,PineconeCollection.update at threshold,No,Monitor
+raggy/core/pinecone_adapter.py,166,MEDIUM,Complexity,CC=9,PineconeCollection.add near threshold,No,Monitor
+raggy/core/supabase_adapter.py,228,LOW,Complexity,CC=8,SupabaseCollection.add acceptable,No,Monitor
+raggy/core/supabase_adapter.py,432,LOW,Complexity,CC=8,SupabaseCollection.delete acceptable,No,Monitor
+raggy/config/raggy_config.py,107,LOW,Style,UP015,Redundant open mode 'r',Yes,Auto
+raggy/config/raggy_config.py,116,LOW,Style,RET504,Unnecessary assignment before return,No,2 min
+raggy/config/raggy_config.py,294,LOW,Docstring,D401,Imperative mood violation in __repr__,No,1 min
+raggy/core/vector_store_factory.py,3,LOW,Import,I001,Import block unsorted,Yes,Auto
+raggy/core/supabase_adapter.py,67,LOW,Style,F841,Unused variable 'result',Yes,Auto
+raggy/embeddings/__init__.py,7,LOW,Import,I001,Import block unsorted,Yes,Auto
+raggy/embeddings/factory.py,3,LOW,Import,I001,Import block unsorted,Yes,Auto
+raggy/embeddings/provider.py,42,LOW,Style,PIE790,Unnecessary pass statement,Yes,Auto
+raggy/embeddings/provider.py,51,LOW,Style,PIE790,Unnecessary pass statement,Yes,Auto
+raggy/embeddings/provider.py,60,LOW,Style,PIE790,Unnecessary pass statement,Yes,Auto
+raggy/embeddings/provider.py,63,LOW,Docstring,D401,Imperative mood violation in __repr__,No,1 min
+raggy/embeddings/openai_provider.py,117,LOW,Style,RET506,Unnecessary elif after raise,Yes,Auto
+raggy/embeddings/sentence_transformers_provider.py,83,LOW,Style,RET504,Unnecessary assignment before return,No,2 min
+Multiple files,Various,LOW,Docstring,D413,Missing blank line after docstring sections (51 occurrences),Yes,Auto
