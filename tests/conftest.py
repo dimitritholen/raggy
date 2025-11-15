@@ -251,10 +251,20 @@ def memory_manager(temp_db_dir):
     """MemoryManager instance with real ChromaDB in temporary directory."""
     from raggy.core.memory import MemoryManager
     from raggy.core.chromadb_adapter import ChromaDBAdapter
+    import os
 
-    # Explicitly use ChromaDB for tests, bypassing .raggy.json config
+    # Explicitly use ChromaDB and SentenceTransformers for tests
+    # Bypass .raggy.json config by unsetting config discovery
     chromadb_adapter = ChromaDBAdapter(path=temp_db_dir)
-    manager = MemoryManager(db_dir=temp_db_dir, quiet=True, database=chromadb_adapter)
+
+    # Pass config_path=None to prevent loading .raggy.json
+    # This ensures tests use local SentenceTransformers, not OpenAI
+    manager = MemoryManager(
+        db_dir=temp_db_dir,
+        quiet=True,
+        database=chromadb_adapter,
+        config_path=os.devnull  # Force config loading to fail gracefully
+    )
     yield manager
     # Cleanup handled by temp_db_dir fixture
 
@@ -264,10 +274,18 @@ def memory_api(temp_db_dir):
     """Memory public API instance with real ChromaDB."""
     from raggy.core.memory import Memory
     from raggy.core.chromadb_adapter import ChromaDBAdapter
+    import os
 
-    # Explicitly use ChromaDB for tests, bypassing .raggy.json config
+    # Explicitly use ChromaDB and SentenceTransformers for tests
     chromadb_adapter = ChromaDBAdapter(path=temp_db_dir)
-    memory = Memory(db_dir=temp_db_dir, quiet=True, database=chromadb_adapter)
+
+    # Pass config_path=None to prevent loading .raggy.json
+    memory = Memory(
+        db_dir=temp_db_dir,
+        quiet=True,
+        database=chromadb_adapter,
+        config_path=os.devnull  # Force config loading to fail gracefully
+    )
     yield memory
     # Cleanup handled by temp_db_dir fixture
 
