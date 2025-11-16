@@ -260,10 +260,10 @@ class DocumentProcessor:
 
     def _extract_pdf_content(self, file_path: Path) -> str:
         """Extract content from PDF file."""
-        import PyPDF2
+        import pypdf
 
         with open(file_path, "rb") as file:
-            reader = PyPDF2.PdfReader(file)
+            reader = pypdf.PdfReader(file)
             text_parts = []
             for page in reader.pages:
                 page_text = page.extract_text()
