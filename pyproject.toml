@@ -14,8 +14,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -23,7 +21,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Text Processing :: General",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
@@ -132,7 +130,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 line-length = 88
 select = [
     "E",   # pycodestyle errors
@@ -154,7 +152,7 @@ ignore = [
     "RET505", # unnecessary else after return
     "RET508", # unnecessary else after break
     "SIM108", # use ternary operator instead of if-else
-    "UP007",  # use X | Y for type annotations (Python 3.8 compatibility)
+    "UP007",  # use X | Y for type annotations (Python 3.10 compatibility)
 ]
 
 [tool.ruff.format]
@@ -167,7 +165,7 @@ line-ending = "auto"
 known-first-party = ["raggy"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # Gradual typing

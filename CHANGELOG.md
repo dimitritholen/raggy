@@ -2,6 +2,20 @@
 
 All notable changes to the raggy project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **BREAKING**: Minimum Python version increased from 3.8 to 3.10
+  - Required for pytest 9.x and other modern dependency upgrades
+  - Python 3.8 reached end-of-life in October 2024
+  - Python 3.9 reaches end-of-life in October 2025
+
+### Infrastructure
+- Updated pyproject.toml Python version constraints
+- Updated ruff target version to py310
+- Updated mypy Python version to 3.10
+- Removed Python 3.8 and 3.9 from supported version classifiers
+
 ## 2025-11-13
 
 ### Fixed
