@@ -39,31 +39,60 @@ def check_environment_setup() -> Tuple[bool, str]:
             - "virtual_environment" if venv is missing
             - "pyproject" if pyproject.toml is missing
             - "invalid_venv" if venv exists but is invalid
+            - "missing_dependencies" if required packages are not installed
 
     """
-    venv_path = Path(".venv")
-    pyproject_path = Path("pyproject.toml")
+    # First check: Are we in ANY virtual environment?
+    # This works for venv, virtualenv, conda, poetry, etc.
+    in_venv = sys.prefix != sys.base_prefix
 
-    if not venv_path.exists():
-        return False, "virtual_environment"
+    # If we're in a virtual environment, that's good enough
+    if in_venv:
+        # Still check if critical dependencies are available
+        try:
+            import chromadb
+            import sentence_transformers
+            import PyPDF2
+            import docx
+            return True, "ok"
+        except ImportError:
+            # We're in a venv but missing dependencies
+            return False, "missing_dependencies"
 
-    if not pyproject_path.exists():
-        return False, "pyproject"
-
-    # Check if virtual environment is activated or can be used
+    # Not in a virtual environment - check if dependencies are available anyway
+    # (e.g., global installation, docker, system packages)
     try:
-        # Check if we can run python in the venv
-        if sys.platform == "win32":
-            python_exe = venv_path / "Scripts" / "python.exe"
-        else:
-            python_exe = venv_path / "bin" / "python"
+        import chromadb
+        import sentence_transformers
+        import PyPDF2
+        import docx
+        # Dependencies are available even without venv - that's acceptable
+        return True, "ok"
+    except ImportError:
+        # No venv AND missing dependencies - this is a problem
+        pass
 
-        if not python_exe.exists():
+    # Backward compatibility: Check for local .venv if it exists
+    venv_path = Path(".venv")
+    if venv_path.exists():
+        # Check if virtual environment is valid
+        try:
+            # Check if we can run python in the venv
+            if sys.platform == "win32":
+                python_exe = venv_path / "Scripts" / "python.exe"
+            else:
+                python_exe = venv_path / "bin" / "python"
+
+            if not python_exe.exists():
+                return False, "invalid_venv"
+
+            # Local .venv exists and is valid but not activated
+            return False, "virtual_environment"
+        except (OSError, AttributeError):
             return False, "invalid_venv"
-    except (OSError, AttributeError):
-        return False, "invalid_venv"
 
-    return True, "ok"
+    # No virtual environment and missing dependencies
+    return False, "missing_dependencies"
 
 
 def _create_virtual_environment(quiet: bool = False) -> bool:
