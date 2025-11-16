@@ -291,8 +291,8 @@ class TestDocumentProcessing:
     
     def test_extract_text_from_pdf_success(self, document_processor, sample_documents):
         """Test successful PDF text extraction."""
-        # Arrange: Mock PyPDF2 components
-        with patch('PyPDF2.PdfReader') as mock_pdf_reader:
+        # Arrange: Mock pypdf components
+        with patch('pypdf.PdfReader') as mock_pdf_reader:
             mock_page = MagicMock()
             mock_page.extract_text.return_value = "Extracted PDF content"
 
@@ -313,8 +313,8 @@ class TestDocumentProcessing:
     
     def test_extract_text_from_pdf_error(self, document_processor, sample_documents):
         """Test PDF text extraction with error."""
-        # Arrange: Mock PyPDF2 to raise ValueError (caught by _extract_text_template)
-        with patch('PyPDF2.PdfReader', side_effect=ValueError("PDF parsing error")):
+        # Arrange: Mock pypdf to raise ValueError (caught by _extract_text_template)
+        with patch('pypdf.PdfReader', side_effect=ValueError("PDF parsing error")):
             pdf_file = sample_documents / "corrupt.pdf"
             pdf_file.write_bytes(b"corrupted pdf content")
 
