@@ -53,6 +53,8 @@ docs/
 raggy_config.yaml
 raggy_config_example.yaml
 .raggy_deps_cache.json
+.raggy.json
+*.backup
 
 # OS specific
 .DS_Store
