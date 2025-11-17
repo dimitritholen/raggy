@@ -32,28 +32,28 @@ dependencies = [
 [project.optional-dependencies]
 yaml = ["PyYAML>=6.0"]
 magic-win = ["python-magic-bin>=0.4.14"]
-magic-unix = ["python-magic"]
+magic-unix = ["python-magic>=0.4.14"]
 
 # Cloud vector stores
-pinecone = ["pinecone-client>=2.0.0"]
-supabase = ["supabase>=2.0.0"]
-cloud-stores = ["pinecone-client>=2.0.0", "supabase>=2.0.0"]
+pinecone = ["pinecone-client>=6.0.0"]
+supabase = ["supabase>=2.24.0"]
+cloud-stores = ["pinecone-client>=6.0.0", "supabase>=2.24.0"]
 
 # Cloud embedding providers
-openai = ["openai>=1.0.0"]
-cloud-embeddings = ["openai>=1.0.0"]
+openai = ["openai>=2.8.0"]
+cloud-embeddings = ["openai>=2.8.0"]
 
 # All cloud features
-cloud = ["pinecone-client>=2.0.0", "supabase>=2.0.0", "openai>=1.0.0"]
+cloud = ["pinecone-client>=6.0.0", "supabase>=2.24.0", "openai>=2.8.0"]
 
 # All optional features
 all = [
     "PyYAML>=6.0",
     "python-magic-bin>=0.4.14;platform_system=='Windows'",
-    "python-magic;platform_system!='Windows'",
-    "pinecone-client>=2.0.0",
-    "supabase>=2.0.0",
-    "openai>=1.0.0",
+    "python-magic>=0.4.14;platform_system!='Windows'",
+    "pinecone-client>=6.0.0",
+    "supabase>=2.24.0",
+    "openai>=2.8.0",
 ]
 
 dev = [
