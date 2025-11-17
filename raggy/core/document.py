@@ -237,7 +237,7 @@ class DocumentProcessor:
             print(f"Warning: Encoding error in {file_path.name}: {sanitized_error}")
             return ""
         except (ValueError, RuntimeError, AttributeError) as e:
-            # PDF/DOCX parsing errors (PyPDF2.PdfReader, docx.Document)
+            # PDF/DOCX parsing errors (pypdf.PdfReader, docx.Document)
             sanitized_error = sanitize_error_message(str(e))
             print(f"Warning: Could not extract text from {file_path.name}: {sanitized_error}")
             return ""
@@ -260,10 +260,10 @@ class DocumentProcessor:
 
     def _extract_pdf_content(self, file_path: Path) -> str:
         """Extract content from PDF file."""
-        import PyPDF2
+        import pypdf
 
         with open(file_path, "rb") as file:
-            reader = PyPDF2.PdfReader(file)
+            reader = pypdf.PdfReader(file)
             text_parts = []
             for page in reader.pages:
                 page_text = page.extract_text()

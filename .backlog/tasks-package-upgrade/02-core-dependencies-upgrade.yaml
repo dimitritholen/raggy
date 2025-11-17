@@ -1,0 +1,629 @@
+# Phase 2: Core Dependencies Upgrade
+# Migrate and upgrade core dependencies with breaking changes
+# Estimated Time: 8-16 hours
+# Priority: HIGH
+# Blocking: Yes (required for functionality)
+
+phase:
+  number: 2
+  name: "Core Dependencies Upgrade"
+  description: "Upgrade core dependencies with breaking changes: PyPDF2→pypdf, chromadb, sentence-transformers, python-docx"
+  estimated_hours: "8-16"
+  risk_level: "HIGH"
+  blocking: true
+  prerequisite_phase: 1
+
+context:
+  implementation_scanned:
+    - "PyPDF2 usage found: raggy/core/document.py:263"
+    - "python-docx usage found: raggy/core/document.py:281"
+    - "chromadb usage found: raggy/core/chromadb_adapter.py:28"
+    - "sentence-transformers usage found: raggy/embeddings/sentence_transformers_provider.py:34"
+
+  critical_notes:
+    - "PyPDF2 is DEPRECATED - must migrate to pypdf (official successor)"
+    - "ChromaDB migration is IRREVERSIBLE - backup databases first"
+    - "sentence-transformers is backwards compatible but has deprecations"
+
+tasks:
+  # ========================================================================
+  # CRITICAL TASK 1: PyPDF2 → pypdf Migration (DEPRECATED PACKAGE)
+  # ========================================================================
+
+  - id: "CORE-001"
+    name: "Replace PyPDF2 import with pypdf in document.py"
+    description: |
+      Migrate from deprecated PyPDF2 to pypdf in raggy/core/document.py
+
+      Context from code scan:
+      - PyPDF2 is imported at raggy/core/document.py:263
+      - Used in _extract_pdf_content() method
+      - PdfReader is used to extract text from PDF pages
+
+      Changes required:
+      1. Line 263: Change "import PyPDF2" → "import pypdf"
+      2. Line 266: PdfReader usage is compatible (no change needed)
+      3. Line 268: .pages iteration is already correct for pypdf
+      4. Line 269: .extract_text() method is compatible
+
+      Breaking changes (PyPDF2 → pypdf):
+      - Import statement changes (PyPDF2 → pypdf)
+      - API is backwards compatible for our usage pattern
+      - No changes needed to PdfReader or .pages usage
+    estimated_minutes: 10
+    priority: "CRITICAL"
+    blocking: true
+    file_path: "raggy/core/document.py"
+    changes:
+      - line: 263
+        from: "import PyPDF2"
+        to: "import pypdf"
+      - line: 266
+        context: "reader = PyPDF2.PdfReader(file)"
+        note: "Change to pypdf.PdfReader (update import prefix)"
+    validation:
+      - "grep 'import pypdf' raggy/core/document.py"
+      - "! grep 'import PyPDF2' raggy/core/document.py"
+    acceptance_criteria:
+      - "BLOCKING: pypdf import exists in raggy/core/document.py:263"
+      - "BLOCKING: No PyPDF2 imports remain in codebase"
+      - "BLOCKING: PDF extraction test passes with pypdf"
+
+  - id: "CORE-002"
+    name: "Update pyproject.toml to use pypdf instead of PyPDF2"
+    description: |
+      Update dependency declaration from deprecated PyPDF2 to pypdf
+
+      Context from code scan:
+      - Current: PyPDF2>=3.0.0 (line 28 in pyproject.toml)
+      - Target: pypdf>=6.2.0 (latest stable version)
+
+      Rationale:
+      - PyPDF2 is officially deprecated
+      - pypdf is the official successor maintained by same team
+      - Version 6.2.0 provides stability and bug fixes
+    estimated_minutes: 5
+    priority: "CRITICAL"
+    blocking: true
+    file_path: "pyproject.toml"
+    changes:
+      - line: 28
+        from: '"PyPDF2>=3.0.0"'
+        to: '"pypdf>=6.2.0"'
+    validation:
+      - "grep 'pypdf>=6.2.0' pyproject.toml"
+      - "! grep 'PyPDF2' pyproject.toml"
+    acceptance_criteria:
+      - "BLOCKING: pypdf>=6.2.0 declared in dependencies"
+      - "BLOCKING: No PyPDF2 references in pyproject.toml"
+
+  - id: "CORE-003"
+    name: "Install pypdf and verify PDF processing works"
+    description: |
+      Install pypdf package and test PDF extraction functionality
+
+      Validation strategy:
+      1. Uninstall PyPDF2: pip uninstall PyPDF2 -y
+      2. Install pypdf: pip install pypdf>=6.2.0
+      3. Run PDF processing tests
+      4. Verify no import errors
+
+      Expected outcome:
+      - pypdf installed successfully
+      - PDF extraction tests pass
+      - No PyPDF2 import errors
+    estimated_minutes: 15
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "pip uninstall PyPDF2 -y"
+      - "pip install pypdf>=6.2.0"
+      - "pytest tests/test_document_processing.py -k pdf -v"
+    validation:
+      - "pip show pypdf | grep 'Version: 6'"
+      - "! pip list | grep PyPDF2"
+    acceptance_criteria:
+      - "BLOCKING: pypdf version 6.2.0+ installed"
+      - "BLOCKING: PyPDF2 completely uninstalled"
+      - "BLOCKING: PDF processing tests pass (test_document_processing.py)"
+      - "BLOCKING: No import errors when running raggy CLI"
+
+  # ========================================================================
+  # TASK 2: ChromaDB Upgrade (IRREVERSIBLE MIGRATION)
+  # ========================================================================
+
+  - id: "CORE-004"
+    name: "Backup existing ChromaDB databases before migration"
+    description: |
+      Create backups of all ChromaDB databases before irreversible migration
+
+      Context from code scan:
+      - ChromaDB PersistentClient used at raggy/core/chromadb_adapter.py:28
+      - Default path: .chromadb/ (from config)
+      - Migration from 0.4.x → 1.3.3 is IRREVERSIBLE
+
+      Backup strategy:
+      1. Find all ChromaDB database directories
+      2. Create timestamped backup: .chromadb.backup-YYYYMMDD-HHMMSS
+      3. Verify backup integrity (check directory size)
+
+      CRITICAL WARNING:
+      - This migration CANNOT be undone
+      - Backup is MANDATORY before proceeding
+      - If migration fails, you MUST restore from backup
+    estimated_minutes: 10
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - 'find . -type d -name ".chromadb*" -not -name "*.backup*" 2>/dev/null'
+      - 'timestamp=$(date +%Y%m%d-%H%M%S); for db in $(find . -type d -name ".chromadb" -not -name "*.backup*" 2>/dev/null); do cp -r "$db" "${db}.backup-${timestamp}"; echo "Backed up: $db → ${db}.backup-${timestamp}"; done'
+    validation:
+      - 'find . -type d -name ".chromadb.backup-*"'
+      - 'du -sh .chromadb* 2>/dev/null || echo "No databases found"'
+    acceptance_criteria:
+      - "BLOCKING: Backup created with timestamp (.chromadb.backup-YYYYMMDD-HHMMSS)"
+      - "BLOCKING: Backup size matches original database"
+      - "BLOCKING: Backup location documented for rollback"
+
+  - id: "CORE-005"
+    name: "Update chromadb dependency to 1.3.3"
+    description: |
+      Update chromadb version constraint in pyproject.toml
+
+      Context from code scan:
+      - Current: chromadb>=0.4.0 (line 26 in pyproject.toml)
+      - Target: chromadb>=1.3.3 (latest stable)
+      - Major version jump: 0.4.x → 1.3.x
+
+      Breaking changes summary:
+      1. .persist() method removed (auto-saves instantly)
+      2. .reset() disabled by default (use allow_reset=True in Settings)
+      3. get_or_create() ignores metadata if collection exists
+      4. Embeddings return 2D NumPy arrays (not Python lists)
+      5. Authentication consolidated to chroma_client_auth_provider
+    estimated_minutes: 5
+    priority: "HIGH"
+    blocking: true
+    file_path: "pyproject.toml"
+    changes:
+      - line: 26
+        from: '"chromadb>=0.4.0"'
+        to: '"chromadb>=1.3.3"'
+    validation:
+      - "grep 'chromadb>=1.3.3' pyproject.toml"
+    acceptance_criteria:
+      - "BLOCKING: chromadb>=1.3.3 declared in dependencies"
+      - "BLOCKING: Version constraint updated from 0.4.0"
+
+  - id: "CORE-006"
+    name: "Install chroma-migrate tool and verify migration readiness"
+    description: |
+      Install ChromaDB migration tool and verify databases are ready
+
+      Migration tool: chroma-migrate
+      Purpose: Migrates ChromaDB 0.4.x → 1.3.3
+
+      Pre-migration checks:
+      1. Install chroma-migrate: pip install chroma-migrate
+      2. Verify tool installed: chroma-migrate --help
+      3. Check migration will detect databases
+
+      NOTE: Do NOT run migration yet - this is preparation only
+    estimated_minutes: 10
+    priority: "HIGH"
+    blocking: true
+    commands:
+      - "pip install chroma-migrate"
+      - "chroma-migrate --help"
+    validation:
+      - "pip show chroma-migrate"
+      - "which chroma-migrate"
+    acceptance_criteria:
+      - "BLOCKING: chroma-migrate tool installed"
+      - "BLOCKING: chroma-migrate --help executes successfully"
+      - "BLOCKING: Tool ready for migration (DO NOT RUN YET)"
+
+  - id: "CORE-007"
+    name: "Run ChromaDB migration (IRREVERSIBLE)"
+    description: |
+      Execute irreversible ChromaDB database migration
+
+      Context from code scan:
+      - ChromaDB used at: raggy/core/chromadb_adapter.py:28
+      - PersistentClient initialization: self._client = chromadb.PersistentClient(path=path)
+
+      Migration steps:
+      1. Verify backup exists (CORE-004)
+      2. Run: chroma-migrate
+      3. Migration will upgrade database schema
+      4. This is IRREVERSIBLE - cannot downgrade
+
+      Expected changes:
+      - Database schema updated to 1.3.3 format
+      - Data preserved (but format changed)
+      - Cannot rollback without restoring backup
+
+      CRITICAL WARNINGS:
+      - ⚠️ IRREVERSIBLE - backup is your only rollback option
+      - ⚠️ Test in development BEFORE production migration
+      - ⚠️ If migration fails, restore from backup (CORE-004)
+    estimated_minutes: 20
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "ls -la .chromadb.backup-* 2>/dev/null && echo 'Backup verified' || echo 'ERROR: No backup found! Run CORE-004 first'"
+      - "chroma-migrate"
+    validation:
+      - "ls -la .chromadb.backup-*"
+      - "echo 'Migration completed - verify with tests'"
+    acceptance_criteria:
+      - "BLOCKING: Backup verified before migration"
+      - "BLOCKING: chroma-migrate executed successfully"
+      - "BLOCKING: No migration errors reported"
+      - "BLOCKING: Database directory still exists"
+    dependencies: ["CORE-004", "CORE-006"]
+
+  - id: "CORE-008"
+    name: "Remove deprecated ChromaDB .persist() calls from code"
+    description: |
+      Remove calls to deprecated .persist() method (auto-saves in v1.3.3)
+
+      Context from code scan:
+      - ChromaDB adapter at: raggy/core/chromadb_adapter.py
+      - Scanned for .persist() calls: NONE FOUND
+
+      Verification:
+      - Search codebase for .persist() usage
+      - If found, remove calls (ChromaDB now auto-saves)
+      - If NOT found, task is already complete
+
+      Breaking change:
+      - ChromaDB 1.x auto-saves instantly
+      - .persist() method removed from API
+      - No action needed if not currently used
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "grep -r '\\.persist()' raggy/ tests/ || echo 'No .persist() calls found - OK'"
+    validation:
+      - "! grep -r '\\.persist()' raggy/ tests/"
+    acceptance_criteria:
+      - "BLOCKING: No .persist() calls in codebase"
+      - "INFO: If found, calls removed with comment explaining auto-save"
+
+  - id: "CORE-009"
+    name: "Test ChromaDB functionality after migration"
+    description: |
+      Verify ChromaDB operations work correctly after migration
+
+      Context from code scan:
+      - ChromaDB adapter: raggy/core/chromadb_adapter.py
+      - Used by: raggy/core/memory.py, raggy/core/rag.py
+
+      Test coverage:
+      1. Collection creation (create_collection)
+      2. Collection retrieval (get_collection)
+      3. get_or_create_collection behavior
+      4. Document addition (add)
+      5. Document query (query)
+      6. Embedding format (should be NumPy arrays)
+
+      Run tests:
+      - pytest tests/test_memory.py -v
+      - pytest tests/test_raggy.py -k chromadb -v
+    estimated_minutes: 20
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "pytest tests/test_memory.py -v"
+      - "pytest tests/test_raggy.py -k chromadb -v || pytest tests/test_raggy.py -v"
+    validation:
+      - "pytest tests/test_memory.py -v"
+    acceptance_criteria:
+      - "BLOCKING: All ChromaDB tests pass"
+      - "BLOCKING: Collection operations work correctly"
+      - "BLOCKING: Embeddings return as NumPy arrays (not lists)"
+      - "BLOCKING: No import errors or API compatibility issues"
+    dependencies: ["CORE-007"]
+
+  # ========================================================================
+  # TASK 3: sentence-transformers Upgrade (Backwards Compatible)
+  # ========================================================================
+
+  - id: "CORE-010"
+    name: "Update sentence-transformers to 5.1.2"
+    description: |
+      Upgrade sentence-transformers from 2.2.x to 5.1.2
+
+      Context from code scan:
+      - Current: sentence-transformers>=2.2.0 (line 27 in pyproject.toml)
+      - Used at: raggy/embeddings/sentence_transformers_provider.py:34
+      - Usage: SentenceTransformer model initialization and .encode()
+
+      Major changes across versions:
+      - v3.x: Replaced .fit() with SentenceTransformerTrainer (NOT USED by Raggy)
+      - v4.x: Replaced CrossEncoder.fit() (NOT USED by Raggy)
+      - v5.x: Added encode_query()/encode_document() for IR tasks (OPTIONAL upgrade)
+
+      Impact on Raggy:
+      - ✅ BACKWARDS COMPATIBLE - we don't use .fit() methods
+      - ✅ Current usage: SentenceTransformer() + .encode() - both compatible
+      - ✅ Optional: Can adopt encode_query()/encode_document() later
+
+      No code changes required initially.
+    estimated_minutes: 5
+    priority: "MEDIUM"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 27
+        from: '"sentence-transformers>=2.2.0"'
+        to: '"sentence-transformers>=5.1.2"'
+    validation:
+      - "grep 'sentence-transformers>=5.1.2' pyproject.toml"
+    acceptance_criteria:
+      - "BLOCKING: sentence-transformers>=5.1.2 declared in dependencies"
+      - "INFO: No code changes required (backwards compatible)"
+
+  - id: "CORE-011"
+    name: "Install sentence-transformers 5.1.2 and test embeddings"
+    description: |
+      Install upgraded sentence-transformers and verify embedding generation
+
+      Context from code scan:
+      - Provider implementation: raggy/embeddings/sentence_transformers_provider.py
+      - Key methods: __init__, encode(), get_dimension(), get_model_name()
+      - Model: all-MiniLM-L6-v2 (default)
+
+      Test coverage:
+      1. Model initialization (SentenceTransformer)
+      2. Embedding generation (.encode())
+      3. Dimension retrieval (get_dimension)
+      4. Batch processing
+      5. NumPy array output
+
+      Expected behavior:
+      - All existing tests pass
+      - No deprecation warnings for our usage
+      - Embeddings generation identical to 2.2.x
+    estimated_minutes: 15
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "pip install 'sentence-transformers>=5.1.2'"
+      - "pytest tests/ -k 'sentence_transformer or embedding' -v"
+    validation:
+      - "pip show sentence-transformers | grep 'Version: 5'"
+      - "pytest tests/ -k embedding -v"
+    acceptance_criteria:
+      - "BLOCKING: sentence-transformers 5.1.2+ installed"
+      - "BLOCKING: Embedding tests pass"
+      - "BLOCKING: Model initialization works correctly"
+      - "BLOCKING: .encode() returns NumPy arrays"
+      - "INFO: No deprecation warnings for current usage"
+    dependencies: ["CORE-010"]
+
+  # ========================================================================
+  # TASK 4: python-docx Upgrade (Minor Upgrade)
+  # ========================================================================
+
+  - id: "CORE-012"
+    name: "Update python-docx to 1.2.0"
+    description: |
+      Upgrade python-docx from 1.0.x to 1.2.0 (requires Python >=3.9)
+
+      Context from code scan:
+      - Current: python-docx>=1.0.0 (line 29 in pyproject.toml)
+      - Used at: raggy/core/document.py:281
+      - Usage: Document class for DOCX extraction
+
+      Changes:
+      - Requires Python >=3.9 (SATISFIED - we're now on Python 3.10)
+      - Minor bug fixes and improvements
+      - No breaking API changes
+
+      Impact:
+      - ✅ Compatible with Python 3.10 requirement (Phase 1)
+      - ✅ No code changes needed
+      - ✅ Backwards compatible API
+    estimated_minutes: 5
+    priority: "LOW"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 29
+        from: '"python-docx>=1.0.0"'
+        to: '"python-docx>=1.2.0"'
+    validation:
+      - "grep 'python-docx>=1.2.0' pyproject.toml"
+    acceptance_criteria:
+      - "BLOCKING: python-docx>=1.2.0 declared in dependencies"
+      - "INFO: No code changes required"
+
+  - id: "CORE-013"
+    name: "Install python-docx 1.2.0 and test DOCX processing"
+    description: |
+      Install upgraded python-docx and verify DOCX extraction
+
+      Context from code scan:
+      - DOCX extraction: raggy/core/document.py:279-303
+      - Extracts: paragraphs, tables
+      - Methods used: Document(), .paragraphs, .tables, .rows, .cells
+
+      Test coverage:
+      1. DOCX file opening
+      2. Paragraph extraction
+      3. Table extraction
+      4. Text cleaning
+      5. Full document processing
+
+      Run tests:
+      - pytest tests/test_document_processing.py -k docx -v
+    estimated_minutes: 10
+    priority: "LOW"
+    blocking: false
+    commands:
+      - "pip install 'python-docx>=1.2.0'"
+      - "pytest tests/test_document_processing.py -k docx -v"
+    validation:
+      - "pip show python-docx | grep 'Version: 1.2'"
+      - "pytest tests/test_document_processing.py -k docx -v"
+    acceptance_criteria:
+      - "BLOCKING: python-docx 1.2.0+ installed"
+      - "BLOCKING: DOCX processing tests pass"
+      - "BLOCKING: Paragraph extraction works"
+      - "BLOCKING: Table extraction works"
+    dependencies: ["CORE-012"]
+
+  # ========================================================================
+  # PHASE COMPLETION: Full Test Suite
+  # ========================================================================
+
+  - id: "CORE-014"
+    name: "Run full test suite after core dependency upgrades"
+    description: |
+      Comprehensive testing after all core dependency upgrades
+
+      Test scope:
+      1. All document processing tests (PDF, DOCX, MD, TXT)
+      2. All ChromaDB operations (memory, RAG, search)
+      3. All embedding generation tests
+      4. Integration tests
+      5. CLI smoke tests
+
+      Success criteria:
+      - 100% test pass rate
+      - No import errors
+      - No deprecation warnings (except documented ones)
+      - Coverage >= 85%
+
+      Commands:
+      - pytest --cov=raggy --cov-report=term-missing -v
+      - raggy --help (CLI smoke test)
+    estimated_minutes: 30
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "pytest --cov=raggy --cov-report=term-missing -v"
+      - "pytest --cov=raggy --cov-report=html:htmlcov"
+      - "raggy --help"
+    validation:
+      - "pytest --cov=raggy --cov-fail-under=85"
+      - "raggy --help"
+    acceptance_criteria:
+      - "BLOCKING: 100% tests pass (no failures, no errors)"
+      - "BLOCKING: Coverage >= 85%"
+      - "BLOCKING: No import errors"
+      - "BLOCKING: CLI executes without errors"
+      - "BLOCKING: All core dependencies upgraded successfully"
+      - "INFO: Document all deprecation warnings for future cleanup"
+    dependencies: ["CORE-003", "CORE-009", "CORE-011", "CORE-013"]
+
+  - id: "CORE-015"
+    name: "Update CHANGELOG with core dependency upgrades"
+    description: |
+      Document all core dependency changes in CHANGELOG.md
+
+      Changelog entries:
+      1. PyPDF2 → pypdf migration (BREAKING)
+      2. ChromaDB 0.4.x → 1.3.3 (BREAKING, irreversible)
+      3. sentence-transformers 2.2.x → 5.1.2 (backwards compatible)
+      4. python-docx 1.0.x → 1.2.0 (minor)
+
+      Format:
+      ```markdown
+      ## [Unreleased]
+
+      ### Changed (BREAKING)
+      - **BREAKING:** Migrated from deprecated PyPDF2 to pypdf 6.2.0
+      - **BREAKING:** Upgraded ChromaDB from 0.4.x to 1.3.3 (irreversible migration)
+
+      ### Changed
+      - Upgraded sentence-transformers from 2.2.x to 5.1.2 (backwards compatible)
+      - Upgraded python-docx from 1.0.x to 1.2.0
+      ```
+
+      Include:
+      - Migration notes for ChromaDB
+      - PyPDF2 deprecation notice
+      - Rollback instructions (backup restoration)
+    estimated_minutes: 15
+    priority: "HIGH"
+    blocking: false
+    file_path: "CHANGELOG.md"
+    validation:
+      - "grep 'pypdf 6.2.0' CHANGELOG.md"
+      - "grep 'ChromaDB.*1.3.3' CHANGELOG.md"
+      - "grep 'sentence-transformers.*5.1.2' CHANGELOG.md"
+    acceptance_criteria:
+      - "BLOCKING: All 4 dependency changes documented in CHANGELOG"
+      - "BLOCKING: Breaking changes marked with BREAKING tag"
+      - "BLOCKING: Migration instructions included for ChromaDB"
+      - "INFO: Rollback instructions documented"
+
+# ============================================================================
+# PHASE 2 SUMMARY
+# ============================================================================
+
+summary:
+  total_tasks: 15
+  estimated_time: "8-16 hours"
+  critical_tasks: 7
+  high_priority_tasks: 4
+  medium_priority_tasks: 2
+  low_priority_tasks: 2
+
+  dependencies_upgraded:
+    - name: "PyPDF2 → pypdf"
+      version_change: "3.0.0 → 6.2.0"
+      breaking: true
+      reason: "PyPDF2 deprecated - pypdf is official successor"
+      files_affected: ["raggy/core/document.py"]
+
+    - name: "chromadb"
+      version_change: "0.4.0 → 1.3.3"
+      breaking: true
+      reason: "Major API changes, irreversible migration"
+      files_affected: ["raggy/core/chromadb_adapter.py", "raggy/core/memory.py", "raggy/core/rag.py"]
+
+    - name: "sentence-transformers"
+      version_change: "2.2.0 → 5.1.2"
+      breaking: false
+      reason: "Backwards compatible, new optional APIs"
+      files_affected: ["raggy/embeddings/sentence_transformers_provider.py"]
+
+    - name: "python-docx"
+      version_change: "1.0.0 → 1.2.0"
+      breaking: false
+      reason: "Minor upgrade, bug fixes"
+      files_affected: ["raggy/core/document.py"]
+
+  critical_warnings:
+    - "⚠️ ChromaDB migration is IRREVERSIBLE - backup databases first (CORE-004)"
+    - "⚠️ PyPDF2 is deprecated - must migrate to pypdf"
+    - "⚠️ Test in development environment before production deployment"
+
+  rollback_plan:
+    - step: "If ChromaDB migration fails:"
+      actions:
+        - "Stop all Raggy processes"
+        - "Delete migrated .chromadb directory"
+        - "Restore from .chromadb.backup-YYYYMMDD-HHMMSS"
+        - "Downgrade chromadb: pip install 'chromadb>=0.4.0,<1.0.0'"
+
+    - step: "If pypdf migration fails:"
+      actions:
+        - "Revert raggy/core/document.py changes (git checkout)"
+        - "Reinstall PyPDF2: pip install 'PyPDF2>=3.0.0'"
+        - "Update pyproject.toml back to PyPDF2>=3.0.0"
+
+  verification_checklist:
+    - "✓ All tests pass (100% pass rate)"
+    - "✓ Coverage >= 85%"
+    - "✓ ChromaDB backup created before migration"
+    - "✓ PyPDF2 completely removed, pypdf working"
+    - "✓ sentence-transformers embeddings identical"
+    - "✓ python-docx DOCX extraction working"
+    - "✓ CLI smoke tests pass"
+    - "✓ CHANGELOG updated"

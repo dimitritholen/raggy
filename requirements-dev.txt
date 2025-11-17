@@ -2,7 +2,7 @@
 # Core dependencies (also needed for production)
 chromadb>=0.4.0
 sentence-transformers>=2.2.0
-PyPDF2>=3.0.0
+pypdf>=6.2.0
 python-docx>=1.0.0
 
 # Optional dependencies for better functionality

@@ -2,6 +2,92 @@
 
 All notable changes to the raggy project will be documented in this file.
 
+## [Unreleased]
+
+### Changed (BREAKING)
+- **BREAKING**: Minimum Python version increased from 3.8 to 3.10
+  - Required for pytest 9.x and other modern dependency upgrades
+  - Python 3.8 reached end-of-life in October 2024
+  - Python 3.9 reaches end-of-life in October 2025
+
+- **BREAKING**: Migrated from deprecated PyPDF2 to pypdf 6.2.0
+  - PyPDF2 is officially deprecated and no longer maintained
+  - pypdf is the official successor maintained by the same team
+  - API is backwards compatible for PDF reading operations
+  - All PDF extraction functionality preserved
+
+- **BREAKING**: Upgraded ChromaDB from 0.4.x to 1.3.3 (irreversible migration)
+  - **CRITICAL**: Migration is IRREVERSIBLE - backup databases before upgrading
+  - `.persist()` method removed (ChromaDB now auto-saves instantly)
+  - Embeddings now return 2D NumPy arrays (not Python lists)
+  - `get_or_create()` ignores metadata if collection exists
+  - See rollback instructions below if migration fails
+
+### Changed
+- Upgraded sentence-transformers from 2.2.x to 5.1.2
+  - Backwards compatible upgrade (no code changes required)
+  - New optional APIs: `encode_query()` and `encode_document()` for information retrieval
+  - All existing `.encode()` usage continues to work
+
+- Upgraded python-docx from 1.0.x to 1.2.0
+  - Minor version upgrade with bug fixes
+  - Requires Python >=3.9 (satisfied by Python 3.10 requirement)
+  - No breaking API changes
+
+### Infrastructure
+- Updated pyproject.toml Python version constraints
+- Updated ruff target version to py310
+- Updated mypy Python version to 3.10
+- Removed Python 3.8 and 3.9 from supported version classifiers
+- Updated core dependency constraints in pyproject.toml:
+  - `pypdf>=6.2.0` (was `PyPDF2>=3.0.0`)
+  - `chromadb>=1.3.3` (was `chromadb>=0.4.0`)
+  - `sentence-transformers>=5.1.2` (was `sentence-transformers>=2.2.0`)
+  - `python-docx>=1.2.0` (was `python-docx>=1.0.0`)
+
+### Migration Notes
+
+#### ChromaDB Migration (0.4.x → 1.3.3)
+**IRREVERSIBLE MIGRATION - Follow these steps carefully:**
+
+1. **Backup databases** (MANDATORY before upgrading):
+   ```bash
+   timestamp=$(date +%Y%m%d-%H%M%S)
+   for db in $(find . -type d -name ".chromadb" 2>/dev/null); do
+     cp -r "$db" "${db}.backup-${timestamp}"
+     echo "Backed up: $db → ${db}.backup-${timestamp}"
+   done
+   ```
+
+2. **Upgrade ChromaDB**:
+   ```bash
+   pip install 'chromadb>=1.3.3'
+   ```
+
+3. **Verify functionality**:
+   ```bash
+   pytest tests/test_memory.py -v
+   ```
+
+**If migration fails - Rollback procedure**:
+1. Stop all Raggy processes
+2. Delete migrated `.chromadb` directory
+3. Restore from backup:
+   ```bash
+   rm -rf .chromadb
+   cp -r .chromadb.backup-YYYYMMDD-HHMMSS .chromadb
+   ```
+4. Downgrade ChromaDB:
+   ```bash
+   pip install 'chromadb>=0.4.0,<1.0.0'
+   ```
+
+#### PyPDF2 Migration (deprecated → pypdf)
+No special migration needed - drop-in replacement. If issues occur:
+1. Revert code changes: `git checkout raggy/core/document.py`
+2. Reinstall PyPDF2: `pip install 'PyPDF2>=3.0.0'`
+3. Update pyproject.toml back to `PyPDF2>=3.0.0`
+
 ## 2025-11-13
 
 ### Fixed

@@ -34,7 +34,7 @@ jobs:
         uv pip install pytest pytest-cov pytest-mock bandit safety mypy ruff
         uv pip install chromadb>=0.4.0
         uv pip install sentence-transformers>=2.2.0
-        uv pip install PyPDF2>=3.0.0
+        uv pip install pypdf>=6.2.0
         uv pip install python-docx>=1.0.0
 
     - name: Run raggy self-tests
@@ -138,7 +138,7 @@ jobs:
       run: |
         uv pip install chromadb>=0.4.0
         uv pip install sentence-transformers>=2.2.0
-        uv pip install PyPDF2>=3.0.0
+        uv pip install pypdf>=6.2.0
         uv pip install python-docx>=1.0.0
 
     - name: Create test documents
@@ -174,7 +174,7 @@ jobs:
       run: |
         uv pip install chromadb>=0.4.0
         uv pip install sentence-transformers>=2.2.0
-        uv pip install PyPDF2>=3.0.0
+        uv pip install pypdf>=6.2.0
         uv pip install python-docx>=1.0.0
 
     - name: Run system diagnostics

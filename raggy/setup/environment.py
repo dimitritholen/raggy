@@ -9,6 +9,41 @@ from typing import Optional, Tuple
 from ..utils.logging import log_error, log_warning
 
 
+def _is_system_wide_install() -> bool:
+    """Check if raggy is installed system-wide (not dev mode).
+
+    Returns:
+        bool: True if raggy is installed as a package (pip install), False if running from source
+
+    """
+    try:
+        import raggy
+        raggy_path = raggy.__file__
+
+        # Check if raggy is installed in site-packages or dist-packages
+        # This indicates a proper pip install (not editable/development mode)
+        if raggy_path and ('site-packages' in raggy_path or 'dist-packages' in raggy_path):
+            # Also verify we have all dependencies available
+            try:
+                import chromadb
+                import sentence_transformers
+                import pypdf
+                import docx
+                return True
+            except ImportError:
+                # Raggy is in site-packages but deps missing - still skip venv
+                # as user likely wants to manage deps themselves
+                return True
+
+        # Check if this is an editable install (pip install -e .)
+        # Editable installs should still create venv for project isolation
+        return False
+
+    except (ImportError, AttributeError):
+        # Can't import raggy at all - definitely not system-wide
+        return False
+
+
 def check_uv_available() -> bool:
     """Check if uv is available.
 
@@ -52,7 +87,7 @@ def check_environment_setup() -> Tuple[bool, str]:
         try:
             import chromadb
             import sentence_transformers
-            import PyPDF2
+            import pypdf
             import docx
             return True, "ok"
         except ImportError:
@@ -64,7 +99,7 @@ def check_environment_setup() -> Tuple[bool, str]:
     try:
         import chromadb
         import sentence_transformers
-        import PyPDF2
+        import pypdf
         import docx
         # Dependencies are available even without venv - that's acceptable
         return True, "ok"
@@ -143,7 +178,7 @@ requires-python = ">=3.8"
 dependencies = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
-    "PyPDF2>=3.0.0",
+    "pypdf>=6.2.0",
     "python-docx>=1.0.0",
 ]
 
@@ -183,7 +218,7 @@ def _install_dependencies(quiet: bool = False) -> bool:
         base_deps = [
             "chromadb>=0.4.0",
             "sentence-transformers>=2.2.0",
-            "PyPDF2>=3.0.0",
+            "pypdf>=6.2.0",
             "python-docx>=1.0.0"
         ]
         subprocess.check_call(
@@ -196,7 +231,7 @@ def _install_dependencies(quiet: bool = False) -> bool:
 
     except subprocess.CalledProcessError as e:
         print(f"ERROR: Failed to install dependencies: {e}")
-        print("Manual install: uv pip install chromadb sentence-transformers PyPDF2")
+        print("Manual install: uv pip install chromadb sentence-transformers pypdf")
         return False
 
     return True
@@ -249,12 +284,13 @@ def _create_docs_directory(quiet: bool = False) -> Optional[Path]:
     return docs_path
 
 
-def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool:
+def _create_development_state_file(docs_path: Path, quiet: bool = False, is_system_install: bool = False) -> bool:
     """Create initial DEVELOPMENT_STATE.md for AI workflow tracking.
 
     Args:
         docs_path: Path to docs directory
         quiet: If True, suppress output
+        is_system_install: If True, raggy is installed system-wide
 
     Returns:
         bool: True if successful, False otherwise
@@ -266,6 +302,15 @@ def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool
             print("Creating initial DEVELOPMENT_STATE.md...")
 
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Adjust content based on whether it's a system-wide install
+        if is_system_install:
+            install_status = "✅ Raggy detected as system-wide installation (pip install)"
+            deps_status = "✅ Dependencies already installed with raggy package"
+        else:
+            install_status = "✅ Virtual environment (.venv) created and activated"
+            deps_status = "✅ Dependencies installed: chromadb, sentence-transformers, pypdf, python-docx"
+
         dev_state_content = f"""# Development State
 
 **Last Updated:** {timestamp}
@@ -274,9 +319,9 @@ def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool
 ## Project Status: INITIALIZED
 
 ### COMPLETED:
-- ✅ Raggy environment initialized with `python raggy.py init`
-- ✅ Virtual environment (.venv) created and activated
-- ✅ Dependencies installed: chromadb, sentence-transformers, PyPDF2, python-docx
+- ✅ Raggy environment initialized with `raggy init`
+- {install_status}
+- {deps_status}
 - ✅ Project configuration (pyproject.toml) generated
 - ✅ Example configuration (raggy_config_example.yaml) created
 - ✅ Documentation directory (docs/) established
@@ -291,8 +336,8 @@ def _create_development_state_file(docs_path: Path, quiet: bool = False) -> bool
 ### NEXT STEPS:
 1. **Add documentation files** to the docs/ directory
 2. **Optional:** Copy raggy_config_example.yaml to raggy_config.yaml and customize expansions
-3. **Build the RAG database:** Run `python raggy.py build`
-4. **Test search functionality:** Run `python raggy.py search "your query"`
+3. **Build the RAG database:** Run `raggy build`
+4. **Test search functionality:** Run `raggy search "your query"`
 5. **Configure AI agents** with the knowledge-driven workflow from README.md
 
 ### DECISIONS:
@@ -391,7 +436,7 @@ chunking:
 # 1. Copy this file to raggy_config.yaml
 # 2. Customize the expansions section with your domain terms
 # 3. Adjust model and chunking settings as needed
-# 4. Run: python raggy.py search "your-term" --expand
+# 4. Run: raggy search "your-term" --expand
 """
 
         try:
@@ -404,19 +449,29 @@ chunking:
     return True
 
 
-def _print_setup_summary() -> None:
-    """Print summary of environment setup completion."""
+def _print_setup_summary(is_system_install: bool = False) -> None:
+    """Print summary of environment setup completion.
+
+    Args:
+        is_system_install: If True, raggy is installed system-wide
+
+    """
     print("✅ Environment setup complete!")
     print("\nCreated files:")
-    print("- .venv/ (virtual environment)")
+    if not is_system_install:
+        print("- .venv/ (virtual environment)")
     print("- pyproject.toml (project configuration)")
     print("- raggy_config_example.yaml (example configuration)")
     print("- docs/DEVELOPMENT_STATE.md (AI agent continuity tracking)")
+
+    if is_system_install:
+        print("\nNote: Using system-wide raggy installation (no virtual environment created)")
+
     print("\nNext steps:")
     print("1. Add your documentation files to the docs/ directory")
     print("2. Optional: Copy raggy_config_example.yaml to raggy_config.yaml and customize")
-    print("3. Run: python raggy.py build")
-    print("4. Run: python raggy.py search \"your query\"")
+    print("3. Run: raggy build")
+    print("4. Run: raggy search \"your query\"")
 
 
 def setup_environment(quiet: bool = False) -> bool:
@@ -432,20 +487,30 @@ def setup_environment(quiet: bool = False) -> bool:
     if not quiet:
         print("🚀 Setting up raggy environment...")
 
-    # Check if uv is available
-    if not check_uv_available():
-        return False
+    # Check if raggy is installed system-wide
+    is_system_install = _is_system_wide_install()
 
-    # Create virtual environment
-    if not _create_virtual_environment(quiet):
-        return False
+    if is_system_install:
+        if not quiet:
+            print("✓ Raggy is installed system-wide, skipping virtual environment creation")
+        # For system-wide install, we don't need to check uv or install dependencies
+        # as they should already be installed with raggy
+    else:
+        # Check if uv is available for venv creation
+        if not check_uv_available():
+            return False
+
+        # Create virtual environment
+        if not _create_virtual_environment(quiet):
+            return False
+
+        # Install dependencies
+        if not _install_dependencies(quiet):
+            return False
 
     # Create minimal pyproject.toml if it doesn't exist
+    # (Still useful for project configuration even with system-wide install)
     if not _create_project_config(quiet):
-        return False
-
-    # Install dependencies
-    if not _install_dependencies(quiet):
         return False
 
     # Create docs directory if it doesn't exist
@@ -454,7 +519,7 @@ def setup_environment(quiet: bool = False) -> bool:
         return False
 
     # Create initial DEVELOPMENT_STATE.md for AI workflow
-    if not _create_development_state_file(docs_path, quiet):
+    if not _create_development_state_file(docs_path, quiet, is_system_install):
         # Warning already printed, continue anyway
         pass
 
@@ -464,6 +529,6 @@ def setup_environment(quiet: bool = False) -> bool:
         pass
 
     if not quiet:
-        _print_setup_summary()
+        _print_setup_summary(is_system_install)
 
     return True

@@ -20,7 +20,7 @@ class PackageInstaller:
         "python-magic": "magic",
         "python-docx": "docx",
         "pyyaml": "yaml",
-        "PyPDF2": "PyPDF2",
+        "pypdf": "pypdf",
     }
 
     def __init__(self, skip_cache: bool = False) -> None:
@@ -73,21 +73,21 @@ class PackageInstaller:
         error_messages = {
             "virtual_environment": (
                 "ERROR: No virtual environment found.\n"
-                "Run 'python raggy.py init' to set up the project environment."
+                "Run 'raggy init' to set up the project environment."
             ),
             "pyproject": (
                 "ERROR: No pyproject.toml found.\n"
-                "Run 'python raggy.py init' to set up the project environment."
+                "Run 'raggy init' to set up the project environment."
             ),
             "invalid_venv": (
                 "ERROR: Invalid virtual environment found.\n"
-                "Delete .venv directory and run 'python raggy.py init' to recreate it."
+                "Delete .venv directory and run 'raggy init' to recreate it."
             ),
             "missing_dependencies": (
                 "ERROR: Required dependencies are not installed.\n"
                 "If you installed raggy as a package, run: pip install 'raggy[all]'\n"
                 "If using from source, run: pip install -e '.[all]'\n"
-                "Or manually install: pip install chromadb sentence-transformers PyPDF2 python-docx"
+                "Or manually install: pip install chromadb sentence-transformers pypdf python-docx"
             ),
         }
         message = error_messages.get(
@@ -283,7 +283,7 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False) -> None:
             print("\nIf you're developing raggy:")
             print("  pip install -e '.[all]'")
             print("\nOr install manually:")
-            print("  pip install chromadb sentence-transformers PyPDF2 python-docx")
+            print("  pip install chromadb sentence-transformers pypdf python-docx")
         elif env_issue == "virtual_environment":
             print("\nERROR: Local .venv exists but is not activated.")
             print("\nPlease activate your virtual environment:")
@@ -310,7 +310,7 @@ def setup_dependencies(skip_cache: bool = False, quiet: bool = False) -> None:
     required_packages = [
         "chromadb>=0.4.0",
         "sentence-transformers>=2.2.0",
-        "PyPDF2>=3.0.0",
+        "pypdf>=6.2.0",
         "python-docx>=1.0.0",
     ]
 

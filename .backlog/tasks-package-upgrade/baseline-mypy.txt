@@ -1,0 +1,2 @@
+/home/dimitri/.pyenv/versions/3.12.11/lib/python3.12/site-packages/mcp/client/sse.py:107: error: Pattern matching is only supported in Python 3.10 and greater  [syntax]
+Found 1 error in 1 file (errors prevented further checking)

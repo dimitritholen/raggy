@@ -101,7 +101,7 @@ class SearchEngine:
         except (ValueError, RuntimeError, OSError) as e:
             # Database not initialized or collection doesn't exist
             log_error(
-                "Database collection not found - run 'python raggy.py build' first",
+                "Database collection not found - run 'raggy build' first",
                 e,
                 quiet=self.quiet,
             )
