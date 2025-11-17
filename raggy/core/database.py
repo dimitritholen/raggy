@@ -132,5 +132,5 @@ class DatabaseManager:
             # Database not initialized or connection error
             log_error("Database stats unavailable", e, quiet=True)
             return {
-                "error": "Database not found. Run 'python raggy.py build' first to index your documents."
+                "error": "Database not found. Run 'raggy build' first to index your documents."
             }

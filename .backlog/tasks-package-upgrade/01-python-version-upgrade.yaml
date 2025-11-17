@@ -1,0 +1,216 @@
+# Phase 1: Python Version Upgrade
+# Update Python version requirement from 3.8 to 3.10
+# Estimated Time: 1-2 hours
+# Priority: CRITICAL
+# Blocking: Yes (all other upgrades depend on this)
+
+phase:
+  number: 1
+  name: "Python Version Upgrade"
+  description: "Update Python version constraints to 3.10+ in all configuration files"
+  estimated_hours: "1-2"
+  risk_level: "MEDIUM"
+  blocking: true
+  prerequisite_phase: 0
+
+tasks:
+  - id: "PY-001"
+    name: "Update Python version in pyproject.toml"
+    description: "Change requires-python from >=3.8 to >=3.10"
+    estimated_minutes: 5
+    priority: "CRITICAL"
+    blocking: true
+    file_path: "pyproject.toml"
+    changes:
+      - line: 26
+        from: 'requires-python = ">=3.8"'
+        to: 'requires-python = ">=3.10"'
+    validation:
+      - "grep 'requires-python = \">=3.10\"' pyproject.toml"
+
+  - id: "PY-002"
+    name: "Update Python version classifiers in pyproject.toml"
+    description: "Remove Python 3.8 and 3.9 classifiers, keep 3.10+"
+    estimated_minutes: 10
+    priority: "HIGH"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - section: "classifiers"
+        remove:
+          - '"Programming Language :: Python :: 3.8"'
+          - '"Programming Language :: Python :: 3.9"'
+        keep:
+          - '"Programming Language :: Python :: 3.10"'
+          - '"Programming Language :: Python :: 3.11"'
+          - '"Programming Language :: Python :: 3.12"'
+    validation:
+      - "grep -v 'Python :: 3.8' pyproject.toml | grep -v 'Python :: 3.9'"
+      - "grep 'Python :: 3.10' pyproject.toml"
+
+  - id: "PY-003"
+    name: "Update Ruff target version configuration"
+    description: "Change ruff target-version from py38 to py310"
+    estimated_minutes: 5
+    priority: "HIGH"
+    blocking: true
+    file_path: "pyproject.toml"
+    changes:
+      - section: "[tool.ruff]"
+        line: 135
+        from: 'target-version = "py38"'
+        to: 'target-version = "py310"'
+    validation:
+      - "grep 'target-version = \"py310\"' pyproject.toml"
+
+  - id: "PY-004"
+    name: "Update mypy Python version configuration"
+    description: "Change mypy python_version from 3.8 to 3.10"
+    estimated_minutes: 5
+    priority: "HIGH"
+    blocking: true
+    file_path: "pyproject.toml"
+    changes:
+      - section: "[tool.mypy]"
+        line: 170
+        from: 'python_version = "3.8"'
+        to: 'python_version = "3.10"'
+    validation:
+      - "grep 'python_version = \"3.10\"' pyproject.toml"
+
+  - id: "PY-005"
+    name: "Update UP007 ignore rule comment"
+    description: "Change Ruff UP007 ignore comment from Python 3.8 to 3.10 compatibility"
+    estimated_minutes: 5
+    priority: "LOW"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - section: "[tool.ruff] ignore"
+        line: 157
+        from: '"UP007",  # use X | Y for type annotations (Python 3.8 compatibility)'
+        to: '"UP007",  # use X | Y for type annotations (Python 3.10 compatibility)'
+    validation:
+      - "grep 'Python 3.10 compatibility' pyproject.toml"
+
+  - id: "PY-006"
+    name: "Check for Python 3.8-specific code patterns"
+    description: "Search codebase for outdated Python 3.8 syntax that can be modernized"
+    estimated_minutes: 20
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "rg 'from typing import' raggy.py | head -20"
+      - "rg 'Optional\\[' raggy.py | head -10"
+      - "rg 'Union\\[' raggy.py | head -10"
+    notes:
+      - "Python 3.10 allows X | Y syntax instead of Union[X, Y]"
+      - "Python 3.10 allows X | None instead of Optional[X]"
+      - "This is LOW priority - can be done in a future modernization pass"
+      - "UP007 rule is currently ignored, can enable after migration"
+
+  - id: "PY-007"
+    name: "Verify Python version in CI/CD configuration"
+    description: "Check if CI/CD files exist and update Python versions"
+    estimated_minutes: 15
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "fd -t f '.github/workflows' -x grep -l 'python-version' {} \\; 2>/dev/null || echo 'No CI/CD files found'"
+      - "fd -t f '.gitlab-ci.yml' 2>/dev/null || echo 'No GitLab CI found'"
+      - "fd -t f 'tox.ini' 2>/dev/null || echo 'No tox.ini found'"
+    notes:
+      - "Update python-version in CI workflows from 3.8, 3.9 to 3.10, 3.11, 3.12"
+      - "This task may not apply if CI/CD is not configured"
+
+  - id: "PY-008"
+    name: "Run linting with new Python version configuration"
+    description: "Execute ruff and mypy with updated Python 3.10 settings"
+    estimated_minutes: 10
+    priority: "HIGH"
+    blocking: true
+    commands:
+      - "ruff check raggy.py"
+      - "mypy raggy.py"
+    validation:
+      - "ruff check raggy.py || true"
+      - "mypy raggy.py || true"
+    notes:
+      - "|| true allows command to succeed even with warnings"
+      - "Focus on NEW errors introduced by Python version change"
+      - "Compare with baseline-ruff.txt and baseline-mypy.txt"
+
+  - id: "PY-009"
+    name: "Test import compatibility with Python 3.10+"
+    description: "Verify no Python 3.8-specific imports break with 3.10 constraints"
+    estimated_minutes: 15
+    priority: "HIGH"
+    blocking: true
+    commands:
+      - "python -c 'import raggy; print(\"✓ Import successful\")'"
+    validation:
+      - "python -c 'import raggy'"
+    notes:
+      - "This verifies the module can be imported"
+      - "Does not run tests, just checks import-time errors"
+
+  - id: "PY-010"
+    name: "Document Python version upgrade in CHANGELOG"
+    description: "Add entry documenting Python 3.10 requirement"
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    file_path: "CHANGELOG"
+    content: |
+      ## [Unreleased]
+
+      ### Changed
+      - **BREAKING**: Minimum Python version increased from 3.8 to 3.10
+        - Required for pytest 9.x and other modern dependency upgrades
+        - Python 3.8 reached end-of-life in October 2024
+        - Python 3.9 reaches end-of-life in October 2025
+
+      ### Infrastructure
+      - Updated pyproject.toml Python version constraints
+      - Updated ruff target version to py310
+      - Updated mypy Python version to 3.10
+      - Removed Python 3.8 and 3.9 from supported version classifiers
+    validation:
+      - "grep 'Minimum Python version increased' CHANGELOG"
+
+  - id: "PY-011"
+    name: "Commit Python version upgrade changes"
+    description: "Create commit for Python version configuration updates"
+    estimated_minutes: 5
+    priority: "HIGH"
+    blocking: true
+    commands:
+      - "git add pyproject.toml CHANGELOG"
+      - "git commit -m 'chore: upgrade minimum Python version from 3.8 to 3.10\n\nRequired for pytest 9.x and modern dependency ecosystem.\nPython 3.8 reached EOL October 2024.\n\nChanges:\n- pyproject.toml: requires-python >=3.10\n- pyproject.toml: removed Python 3.8/3.9 classifiers\n- pyproject.toml: ruff target-version py310\n- pyproject.toml: mypy python_version 3.10\n- CHANGELOG: documented breaking change'"
+    validation:
+      - "git log -1 --oneline | grep 'upgrade minimum Python version'"
+    notes:
+      - "Pre-commit hooks will run automatically"
+      - "If hooks fail, fix issues and retry commit"
+
+completion_criteria:
+  - "pyproject.toml requires-python updated to >=3.10"
+  - "All Python version references updated (ruff, mypy, classifiers)"
+  - "Linting passes with new configuration (or errors documented)"
+  - "Import test succeeds"
+  - "CHANGELOG updated with breaking change notice"
+  - "Changes committed to feature branch"
+
+next_phase:
+  number: 2
+  name: "Core Dependencies Upgrade"
+  file: "02-core-dependencies-upgrade.yaml"
+  description: "Request Phase 2 tasks with: 'Continue to Phase 2 (Core Dependencies)'"
+  note: "Phase 2 not yet generated - incremental workflow"
+
+rollback_procedure:
+  description: "If this phase fails, rollback changes"
+  steps:
+    - "git reset --hard HEAD~1  # Undo commit PY-011"
+    - "git checkout pyproject.toml CHANGELOG  # Restore original files"
+    - "Verify: grep 'requires-python = \">=3.8\"' pyproject.toml"

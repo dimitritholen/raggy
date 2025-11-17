@@ -62,6 +62,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "expand_queries": False,
         "boost_exact": True,
     },
+    "chunking": {
+        "smart": True,
+        "preserve_headers": True,
+        "min_chunk_size": MIN_CHUNK_SIZE,
+        "max_chunk_size": MAX_CHUNK_SIZE,
+    },
     "updates": {
         "check_enabled": True,
         "github_repo": "dimitritholen/raggy",

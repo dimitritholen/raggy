@@ -599,7 +599,7 @@ class UniversalRAG:
 
         deps_status.append(self._check_dependency("chromadb", "✗ ChromaDB not installed"))
         deps_status.append(self._check_dependency("sentence_transformers", "✗ sentence-transformers not installed", import_from="sentence_transformers.SentenceTransformer"))
-        deps_status.append(self._check_dependency("PyPDF2", "⚠️  PyPDF2 not installed (PDF support disabled)"))
+        deps_status.append(self._check_dependency("pypdf", "⚠️  pypdf not installed (PDF support disabled)"))
         deps_status.append(self._check_dependency("docx", "⚠️  python-docx not installed (DOCX support disabled)", import_from="docx.Document"))
 
         return deps_status
@@ -628,7 +628,7 @@ class UniversalRAG:
             display_name = {
                 "chromadb": "ChromaDB",
                 "sentence_transformers": "sentence-transformers",
-                "PyPDF2": "PyPDF2",
+                "pypdf": "pypdf",
                 "docx": "python-docx"
             }.get(package, package)
             print(f"✓ {display_name} installed")
@@ -667,7 +667,7 @@ class UniversalRAG:
                 print(f"  Total chunks: {stats['total_chunks']}")
                 print(f"  Documents indexed: {len(stats['sources'])}")
             else:
-                print("ℹ️  No database found - run 'python raggy.py build' to create")
+                print("ℹ️  No database found - run 'raggy build' to create")
         except (OSError, RuntimeError, ValueError) as e:
             print(f"⚠️  Database check error: {e}")
 

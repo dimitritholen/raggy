@@ -261,7 +261,7 @@ def main() -> None:
             # Still need to import even if skipping dependency checks
             try:
                 import chromadb
-                import PyPDF2
+                import pypdf
                 from sentence_transformers import SentenceTransformer
 
                 try:

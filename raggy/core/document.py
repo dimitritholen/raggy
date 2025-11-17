@@ -237,7 +237,7 @@ class DocumentProcessor:
             print(f"Warning: Encoding error in {file_path.name}: {sanitized_error}")
             return ""
         except (ValueError, RuntimeError, AttributeError) as e:
-            # PDF/DOCX parsing errors (PyPDF2.PdfReader, docx.Document)
+            # PDF/DOCX parsing errors (pypdf.PdfReader, docx.Document)
             sanitized_error = sanitize_error_message(str(e))
             print(f"Warning: Could not extract text from {file_path.name}: {sanitized_error}")
             return ""

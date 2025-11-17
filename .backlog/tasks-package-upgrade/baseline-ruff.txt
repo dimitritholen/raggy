@@ -1,0 +1,2833 @@
+warning: The top-level linter settings are deprecated in favour of their counterparts in the `lint` section. Please update the following options in `pyproject.toml`:
+  - 'ignore' -> 'lint.ignore'
+  - 'select' -> 'lint.select'
+  - 'isort' -> 'lint.isort'
+examples/memory_api_examples.py:70:11: F541 [*] f-string without any placeholders
+   |
+68 |     print(f"Stored learning: {learning_id}")
+69 |
+70 |     print(f"\n✓ Added 4 different types of memories\n")
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ F541
+71 |
+72 |     return memory
+   |
+   = help: Remove extraneous `f` prefix
+
+examples/memory_api_examples.py:153:5: F841 Local variable `ai_prompt` is assigned to but never used
+    |
+152 |     # Use in AI prompt
+153 |     ai_prompt = f"""
+    |     ^^^^^^^^^ F841
+154 | {context}
+    |
+    = help: Remove assignment to unused variable `ai_prompt`
+
+examples/memory_api_examples.py:178:5: I001 [*] Import block is un-sorted or un-formatted
+    |
+176 | def example_4_convenience_functions():
+177 |     """Use remember() and recall() convenience functions."""
+178 |     from raggy import remember, recall
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ I001
+179 |
+180 |     print("=== Example 4: Convenience Functions ===\n")
+    |
+    = help: Organize imports
+
+raggy.py:48:1: E402 Module level import not at top of file
+   |
+47 |   # Core functionality
+48 | / from raggy import (
+49 | |     UniversalRAG,
+50 | |     SearchEngine,
+51 | |     DatabaseManager,
+52 | |     DocumentProcessor,
+53 | |     BM25Scorer,
+54 | |     QueryProcessor,
+55 | |     CommandFactory,
+56 | |     __version__,
+57 | | )
+   | |_^ E402
+58 |
+59 |   # Configuration and setup
+   |
+
+raggy.py:48:1: I001 [*] Import block is un-sorted or un-formatted
+    |
+ 47 |   # Core functionality
+ 48 | / from raggy import (
+ 49 | |     UniversalRAG,
+ 50 | |     SearchEngine,
+ 51 | |     DatabaseManager,
+ 52 | |     DocumentProcessor,
+ 53 | |     BM25Scorer,
+ 54 | |     QueryProcessor,
+ 55 | |     CommandFactory,
+ 56 | |     __version__,
+ 57 | | )
+ 58 | |
+ 59 | | # Configuration and setup
+ 60 | | from raggy import (
+ 61 | |     load_config,
+ 62 | |     setup_environment,
+ 63 | |     setup_dependencies,
+ 64 | |     install_if_missing,
+ 65 | |     check_for_updates,
+ 66 | | )
+ 67 | |
+ 68 | | # Scoring and normalization functions
+ 69 | | from raggy import (
+ 70 | |     normalize_cosine_distance,
+ 71 | |     normalize_hybrid_score,
+ 72 | |     interpret_score,
+ 73 | | )
+ 74 | |
+ 75 | | # Command implementations
+ 76 | | from raggy.cli.commands import (
+ 77 | |     InitCommand,
+ 78 | |     BuildCommand,
+ 79 | |     SearchCommand,
+ 80 | |     InteractiveCommand,
+ 81 | |     StatusCommand,
+ 82 | |     OptimizeCommand,
+ 83 | |     TestCommand,
+ 84 | |     DiagnoseCommand,
+ 85 | |     ValidateCommand,
+ 86 | | )
+ 87 | |
+ 88 | | # Utility functions
+ 89 | | from raggy.utils.logging import (
+ 90 | |     log_error,
+ 91 | |     log_warning,
+ 92 | |     handle_file_error,
+ 93 | | )
+ 94 | |
+ 95 | | from raggy.utils.security import (
+ 96 | |     validate_path,
+ 97 | |     sanitize_error_message,
+ 98 | | )
+ 99 | |
+100 | | from raggy.utils.symbols import (
+101 | |     get_symbols,
+102 | |     SYMBOLS,
+103 | | )
+104 | |
+105 | | # Cache utilities
+106 | | from raggy.config.cache import (
+107 | |     get_cache_file,
+108 | |     load_deps_cache,
+109 | |     save_deps_cache,
+110 | | )
+111 | |
+112 | | # Constants - re-export for backward compatibility
+113 | | from raggy.config.constants import (
+114 | |     CHUNK_READ_SIZE,
+115 | |     MAX_CACHE_SIZE,
+116 | |     CACHE_TTL,
+117 | |     MAX_FILE_SIZE_MB,
+118 | |     SESSION_CACHE_HOURS,
+119 | |     UPDATE_TIMEOUT_SECONDS,
+120 | |     DEFAULT_CHUNK_SIZE,
+121 | |     DEFAULT_CHUNK_OVERLAP,
+122 | |     DEFAULT_RESULTS,
+123 | |     DEFAULT_CONTEXT_CHARS,
+124 | |     DEFAULT_HYBRID_WEIGHT,
+125 | |     SUPPORTED_EXTENSIONS,
+126 | |     GLOB_PATTERNS,
+127 | |     FAST_MODEL,
+128 | |     DEFAULT_MODEL,
+129 | |     MULTILINGUAL_MODEL,
+130 | |     ACCURATE_MODEL,
+131 | | )
+    | |_^ I001
+132 |
+133 |   # ============================================================================
+    |
+    = help: Organize imports
+
+raggy.py:60:1: E402 Module level import not at top of file
+   |
+59 |   # Configuration and setup
+60 | / from raggy import (
+61 | |     load_config,
+62 | |     setup_environment,
+63 | |     setup_dependencies,
+64 | |     install_if_missing,
+65 | |     check_for_updates,
+66 | | )
+   | |_^ E402
+67 |
+68 |   # Scoring and normalization functions
+   |
+
+raggy.py:69:1: E402 Module level import not at top of file
+   |
+68 |   # Scoring and normalization functions
+69 | / from raggy import (
+70 | |     normalize_cosine_distance,
+71 | |     normalize_hybrid_score,
+72 | |     interpret_score,
+73 | | )
+   | |_^ E402
+74 |
+75 |   # Command implementations
+   |
+
+raggy.py:76:1: E402 Module level import not at top of file
+   |
+75 |   # Command implementations
+76 | / from raggy.cli.commands import (
+77 | |     InitCommand,
+78 | |     BuildCommand,
+79 | |     SearchCommand,
+80 | |     InteractiveCommand,
+81 | |     StatusCommand,
+82 | |     OptimizeCommand,
+83 | |     TestCommand,
+84 | |     DiagnoseCommand,
+85 | |     ValidateCommand,
+86 | | )
+   | |_^ E402
+87 |
+88 |   # Utility functions
+   |
+
+raggy.py:89:1: E402 Module level import not at top of file
+   |
+88 |   # Utility functions
+89 | / from raggy.utils.logging import (
+90 | |     log_error,
+91 | |     log_warning,
+92 | |     handle_file_error,
+93 | | )
+   | |_^ E402
+94 |
+95 |   from raggy.utils.security import (
+   |
+
+raggy.py:95:1: E402 Module level import not at top of file
+    |
+ 93 |   )
+ 94 |
+ 95 | / from raggy.utils.security import (
+ 96 | |     validate_path,
+ 97 | |     sanitize_error_message,
+ 98 | | )
+    | |_^ E402
+ 99 |
+100 |   from raggy.utils.symbols import (
+    |
+
+raggy.py:100:1: E402 Module level import not at top of file
+    |
+ 98 |   )
+ 99 |
+100 | / from raggy.utils.symbols import (
+101 | |     get_symbols,
+102 | |     SYMBOLS,
+103 | | )
+    | |_^ E402
+104 |
+105 |   # Cache utilities
+    |
+
+raggy.py:106:1: E402 Module level import not at top of file
+    |
+105 |   # Cache utilities
+106 | / from raggy.config.cache import (
+107 | |     get_cache_file,
+108 | |     load_deps_cache,
+109 | |     save_deps_cache,
+110 | | )
+    | |_^ E402
+111 |
+112 |   # Constants - re-export for backward compatibility
+    |
+
+raggy.py:113:1: E402 Module level import not at top of file
+    |
+112 |   # Constants - re-export for backward compatibility
+113 | / from raggy.config.constants import (
+114 | |     CHUNK_READ_SIZE,
+115 | |     MAX_CACHE_SIZE,
+116 | |     CACHE_TTL,
+117 | |     MAX_FILE_SIZE_MB,
+118 | |     SESSION_CACHE_HOURS,
+119 | |     UPDATE_TIMEOUT_SECONDS,
+120 | |     DEFAULT_CHUNK_SIZE,
+121 | |     DEFAULT_CHUNK_OVERLAP,
+122 | |     DEFAULT_RESULTS,
+123 | |     DEFAULT_CONTEXT_CHARS,
+124 | |     DEFAULT_HYBRID_WEIGHT,
+125 | |     SUPPORTED_EXTENSIONS,
+126 | |     GLOB_PATTERNS,
+127 | |     FAST_MODEL,
+128 | |     DEFAULT_MODEL,
+129 | |     MULTILINGUAL_MODEL,
+130 | |     ACCURATE_MODEL,
+131 | | )
+    | |_^ E402
+132 |
+133 |   # ============================================================================
+    |
+
+raggy.py:243:11: W292 [*] No newline at end of file
+    |
+242 | if __name__ == "__main__":
+243 |     main()
+    |           ^ W292
+    |
+    = help: Add trailing newline
+
+raggy/core/memory.py:143:13: I001 [*] Import block is un-sorted or un-formatted
+    |
+142 |           try:
+143 | /             from copy import deepcopy
+144 | |             from .vector_store_factory import create_vector_store
+    | |_________________________________________________________________^ I001
+145 |
+146 |               # Detect embedding dimension from configuration
+    |
+    = help: Organize imports
+
+raggy/core/memory.py:163:20: RET504 Unnecessary assignment to `adapter` before `return` statement
+    |
+161 |             adapter = create_vector_store(vector_config)
+162 |
+163 |             return adapter
+    |                    ^^^^^^^ RET504
+164 |
+165 |         except (ValueError, RuntimeError, ImportError) as e:
+    |
+    = help: Remove unnecessary assignment
+
+raggy/core/memory.py:269:17: I001 [*] Import block is un-sorted or un-formatted
+    |
+267 |             # Fallback to default SentenceTransformers provider
+268 |             if self._embedding_model is None:
+269 |                 from ..embeddings.sentence_transformers_provider import SentenceTransformersProvider
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ I001
+270 |
+271 |                 if not self.quiet:
+    |
+    = help: Organize imports
+
+raggy/setup/dependencies.py:7:21: F401 [*] `pathlib.Path` imported but unused
+  |
+5 | import sys
+6 | import time
+7 | from pathlib import Path
+  |                     ^^^^ F401
+8 | from typing import Any, Dict, List
+  |
+  = help: Remove unused import: `pathlib.Path`
+
+raggy/setup/environment.py:53:13: I001 [*] Import block is un-sorted or un-formatted
+   |
+51 |           # Still check if critical dependencies are available
+52 |           try:
+53 | /             import chromadb
+54 | |             import sentence_transformers
+55 | |             import PyPDF2
+56 | |             import docx
+   | |_______________________^ I001
+57 |               return True, "ok"
+58 |           except ImportError:
+   |
+   = help: Organize imports
+
+raggy/setup/environment.py:65:9: I001 [*] Import block is un-sorted or un-formatted
+   |
+63 |       # (e.g., global installation, docker, system packages)
+64 |       try:
+65 | /         import chromadb
+66 | |         import sentence_transformers
+67 | |         import PyPDF2
+68 | |         import docx
+   | |___________________^ I001
+69 |           # Dependencies are available even without venv - that's acceptable
+70 |           return True, "ok"
+   |
+   = help: Organize imports
+
+raggy/setup/environment.py:65:16: F401 `chromadb` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   |
+63 |     # (e.g., global installation, docker, system packages)
+64 |     try:
+65 |         import chromadb
+   |                ^^^^^^^^ F401
+66 |         import sentence_transformers
+67 |         import PyPDF2
+   |
+   = help: Remove unused import: `chromadb`
+
+raggy/setup/environment.py:66:16: F401 `sentence_transformers` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   |
+64 |     try:
+65 |         import chromadb
+66 |         import sentence_transformers
+   |                ^^^^^^^^^^^^^^^^^^^^^ F401
+67 |         import PyPDF2
+68 |         import docx
+   |
+   = help: Remove unused import: `sentence_transformers`
+
+raggy/setup/environment.py:67:16: F401 `PyPDF2` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   |
+65 |         import chromadb
+66 |         import sentence_transformers
+67 |         import PyPDF2
+   |                ^^^^^^ F401
+68 |         import docx
+69 |         # Dependencies are available even without venv - that's acceptable
+   |
+   = help: Remove unused import: `PyPDF2`
+
+raggy/setup/environment.py:68:16: F401 `docx` imported but unused; consider using `importlib.util.find_spec` to test for availability
+   |
+66 |         import sentence_transformers
+67 |         import PyPDF2
+68 |         import docx
+   |                ^^^^ F401
+69 |         # Dependencies are available even without venv - that's acceptable
+70 |         return True, "ok"
+   |
+   = help: Remove unused import: `docx`
+
+raggy_cli.py:20:36: F401 [*] `raggy.config.constants.DEFAULT_MODEL` imported but unused
+   |
+18 |     setup_dependencies,
+19 | )
+20 | from raggy.config.constants import DEFAULT_MODEL, FAST_MODEL
+   |                                    ^^^^^^^^^^^^^ F401
+21 | from raggy.utils.logging import log_error
+   |
+   = help: Remove unused import: `raggy.config.constants.DEFAULT_MODEL`
+
+raggy_cli.py:263:24: F401 `chromadb` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+261 |             # Still need to import even if skipping dependency checks
+262 |             try:
+263 |                 import chromadb
+    |                        ^^^^^^^^ F401
+264 |                 import PyPDF2
+265 |                 from sentence_transformers import SentenceTransformer
+    |
+    = help: Remove unused import: `chromadb`
+
+raggy_cli.py:264:24: F401 `PyPDF2` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+262 |             try:
+263 |                 import chromadb
+264 |                 import PyPDF2
+    |                        ^^^^^^ F401
+265 |                 from sentence_transformers import SentenceTransformer
+    |
+    = help: Remove unused import: `PyPDF2`
+
+raggy_cli.py:265:51: F401 `sentence_transformers.SentenceTransformer` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+263 |                 import chromadb
+264 |                 import PyPDF2
+265 |                 from sentence_transformers import SentenceTransformer
+    |                                                   ^^^^^^^^^^^^^^^^^^^ F401
+266 |
+267 |                 try:
+    |
+    = help: Remove unused import: `sentence_transformers.SentenceTransformer`
+
+raggy_cli.py:267:17: SIM105 Use `contextlib.suppress(ImportError)` instead of `try`-`except`-`pass`
+    |
+265 |                   from sentence_transformers import SentenceTransformer
+266 |
+267 | /                 try:
+268 | |                     import magic
+269 | |                 except ImportError:
+270 | |                     pass
+    | |________________________^ SIM105
+271 |               except ImportError as e:
+272 |                   log_error(f"Missing dependency: {e}", quiet=args.quiet)
+    |
+    = help: Replace with `contextlib.suppress(ImportError)`
+
+raggy_cli.py:268:28: F401 `magic` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+267 |                 try:
+268 |                     import magic
+    |                            ^^^^^ F401
+269 |                 except ImportError:
+270 |                     pass
+    |
+    = help: Remove unused import: `magic`
+
+raggy_cli.py:308:11: W292 [*] No newline at end of file
+    |
+307 | if __name__ == "__main__":
+308 |     main()
+    |           ^ W292
+    |
+    = help: Add trailing newline
+
+tests/conftest.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+   |
+ 1 |   """Shared test fixtures for raggy testing."""
+ 2 |
+ 3 | / import pytest
+ 4 | | import tempfile
+ 5 | | import shutil
+ 6 | | from pathlib import Path
+ 7 | | from typing import Dict, Any, Generator
+ 8 | | import sys
+ 9 | | import os
+   | |_________^ I001
+10 |
+11 |   # Add parent directory to path so we can import raggy
+   |
+   = help: Organize imports
+
+tests/conftest.py:14:8: F401 [*] `raggy` imported but unused
+   |
+12 | sys.path.insert(0, str(Path(__file__).parent.parent))
+13 |
+14 | import raggy
+   |        ^^^^^ F401
+   |
+   = help: Remove unused import: `raggy`
+
+tests/conftest.py:76:89: W291 Trailing whitespace
+   |
+74 |     return """This is a plain text document for testing.
+75 |
+76 | It contains multiple paragraphs with various technical terms like API, machine learning, 
+   |                                                                                         ^ W291
+77 | user interface, and configuration settings.
+   |
+   = help: Remove trailing whitespace
+
+tests/conftest.py:126:1: W293 [*] Blank line contains whitespace
+    |
+124 |         def __init__(self, model_name: str):
+125 |             self.model_name = model_name
+126 |         
+    | ^^^^^^^^ W293
+127 |         def encode(self, texts, show_progress_bar=False):
+128 |             """Return mock embeddings based on text length."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/conftest.py:142:1: W293 [*] Blank line contains whitespace
+    |
+140 |                 embeddings.append(embedding)
+141 |             return np.array(embeddings)
+142 |     
+    | ^^^^ W293
+143 |     return MockEmbeddingModel
+    |
+    = help: Remove whitespace from blank line
+
+tests/conftest.py:152:1: W293 [*] Blank line contains whitespace
+    |
+150 |     md_file = sample_docs_dir / "test_doc.md"
+151 |     md_file.write_text(sample_md_content, encoding="utf-8")
+152 |     
+    | ^^^^ W293
+153 |     # Create text file
+154 |     txt_file = sample_docs_dir / "test_notes.txt"
+    |
+    = help: Remove whitespace from blank line
+
+tests/conftest.py:156:1: W293 [*] Blank line contains whitespace
+    |
+154 |     txt_file = sample_docs_dir / "test_notes.txt"
+155 |     txt_file.write_text(sample_txt_content, encoding="utf-8")
+156 |     
+    | ^^^^ W293
+157 |     # Create a README file
+158 |     readme_content = """# Project README
+    |
+    = help: Remove whitespace from blank line
+
+tests/conftest.py:178:1: W293 [*] Blank line contains whitespace
+    |
+176 |     readme_file = sample_docs_dir / "README.md"
+177 |     readme_file.write_text(readme_content, encoding="utf-8")
+178 |     
+    | ^^^^ W293
+179 |     return sample_docs_dir
+    |
+    = help: Remove whitespace from blank line
+
+tests/conftest.py:246:12: RET504 Unnecessary assignment to `db_dir` before `return` statement
+    |
+244 |     """Create temporary directory for vector database."""
+245 |     db_dir = str(tmp_path / "vectordb")
+246 |     return db_dir
+    |            ^^^^^^ RET504
+    |
+    = help: Remove unnecessary assignment
+
+tests/conftest.py:252:5: I001 [*] Import block is un-sorted or un-formatted
+    |
+250 |   def memory_manager(temp_db_dir):
+251 |       """MemoryManager instance with real ChromaDB in temporary directory."""
+252 | /     from raggy.core.memory import MemoryManager
+253 | |     from raggy.core.chromadb_adapter import ChromaDBAdapter
+254 | |     import os
+    | |_____________^ I001
+255 |
+256 |       # Explicitly use ChromaDB and SentenceTransformers for tests
+    |
+    = help: Organize imports
+
+tests/conftest.py:275:5: I001 [*] Import block is un-sorted or un-formatted
+    |
+273 |   def memory_api(temp_db_dir):
+274 |       """Memory public API instance with real ChromaDB."""
+275 | /     from raggy.core.memory import Memory
+276 | |     from raggy.core.chromadb_adapter import ChromaDBAdapter
+277 | |     import os
+    | |_____________^ I001
+278 |
+279 |       # Explicitly use ChromaDB and SentenceTransformers for tests
+    |
+    = help: Organize imports
+
+tests/conftest.py:338:6: W292 [*] No newline at end of file
+    |
+336 |             "priority": "medium"
+337 |         }
+338 |     ]
+    |      ^ W292
+    |
+    = help: Add trailing newline
+
+tests/test_bm25.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+  |
+1 |   """Tests for BM25Scorer functionality."""
+2 |
+3 | / import pytest
+4 | | import math
+5 | | from raggy import BM25Scorer
+  | |____________________________^ I001
+  |
+  = help: Organize imports
+
+tests/test_bm25.py:10:1: W293 [*] Blank line contains whitespace
+   |
+ 8 | class TestBM25Scorer:
+ 9 |     """Test the BM25Scorer class."""
+10 |     
+   | ^^^^ W293
+11 |     def test_initialization(self):
+12 |         """Test BM25Scorer initialization with default parameters."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:21:1: W293 [*] Blank line contains whitespace
+   |
+19 |         assert len(scorer.term_frequencies) == 0
+20 |         assert len(scorer.idf_scores) == 0
+21 |     
+   | ^^^^ W293
+22 |     def test_initialization_custom_params(self):
+23 |         """Test BM25Scorer initialization with custom parameters."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:27:1: W293 [*] Blank line contains whitespace
+   |
+25 |         assert scorer.k1 == 1.5
+26 |         assert scorer.b == 0.8
+27 |     
+   | ^^^^ W293
+28 |     def test_tokenize(self):
+29 |         """Test the tokenization method."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:31:1: W293 [*] Blank line contains whitespace
+   |
+29 |         """Test the tokenization method."""
+30 |         scorer = BM25Scorer()
+31 |         
+   | ^^^^^^^^ W293
+32 |         # Test basic tokenization
+33 |         tokens = scorer._tokenize("The quick brown fox")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:35:1: W293 [*] Blank line contains whitespace
+   |
+33 |         tokens = scorer._tokenize("The quick brown fox")
+34 |         assert tokens == ["the", "quick", "brown", "fox"]
+35 |         
+   | ^^^^^^^^ W293
+36 |         # Test with punctuation
+37 |         tokens = scorer._tokenize("Hello, world! How are you?")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:39:1: W293 [*] Blank line contains whitespace
+   |
+37 |         tokens = scorer._tokenize("Hello, world! How are you?")
+38 |         assert tokens == ["hello", "world", "how", "are", "you"]
+39 |         
+   | ^^^^^^^^ W293
+40 |         # Test with numbers and special characters
+41 |         tokens = scorer._tokenize("API-v1.2 test_function() $variable")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:43:1: W293 [*] Blank line contains whitespace
+   |
+41 |         tokens = scorer._tokenize("API-v1.2 test_function() $variable")
+42 |         assert tokens == ["api", "v1", "2", "test_function", "variable"]
+43 |         
+   | ^^^^^^^^ W293
+44 |         # Test empty string
+45 |         tokens = scorer._tokenize("")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:47:1: W293 [*] Blank line contains whitespace
+   |
+45 |         tokens = scorer._tokenize("")
+46 |         assert tokens == []
+47 |     
+   | ^^^^ W293
+48 |     def test_fit_simple_documents(self, bm25_sample_documents):
+49 |         """Test fitting BM25 with simple documents."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:52:1: W293 [*] Blank line contains whitespace
+   |
+50 |         scorer = BM25Scorer()
+51 |         scorer.fit(bm25_sample_documents)
+52 |         
+   | ^^^^^^^^ W293
+53 |         # Check basic stats
+54 |         assert scorer.doc_count == len(bm25_sample_documents)
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:58:1: W293 [*] Blank line contains whitespace
+   |
+56 |         assert len(scorer.term_frequencies) == len(bm25_sample_documents)
+57 |         assert scorer.avg_doc_length > 0
+58 |         
+   | ^^^^^^^^ W293
+59 |         # Check that IDF scores were calculated
+60 |         assert len(scorer.idf_scores) > 0
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:61:1: W293 [*] Blank line contains whitespace
+   |
+59 |         # Check that IDF scores were calculated
+60 |         assert len(scorer.idf_scores) > 0
+61 |         
+   | ^^^^^^^^ W293
+62 |         # Verify some expected terms are present
+63 |         assert "the" in scorer.idf_scores
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:66:1: W293 [*] Blank line contains whitespace
+   |
+64 |         assert "quick" in scorer.idf_scores
+65 |         assert "fox" in scorer.idf_scores
+66 |     
+   | ^^^^ W293
+67 |     def test_fit_calculates_correct_doc_lengths(self):
+68 |         """Test that document lengths are calculated correctly."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:71:40: W291 [*] Trailing whitespace
+   |
+69 |         documents = [
+70 |             "one two three",  # 3 words
+71 |             "four five",      # 2 words  
+   |                                        ^^ W291
+72 |             "six seven eight nine ten"  # 5 words
+73 |         ]
+   |
+   = help: Remove trailing whitespace
+
+tests/test_bm25.py:74:1: W293 [*] Blank line contains whitespace
+   |
+72 |             "six seven eight nine ten"  # 5 words
+73 |         ]
+74 |         
+   | ^^^^^^^^ W293
+75 |         scorer = BM25Scorer()
+76 |         scorer.fit(documents)
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:77:1: W293 [*] Blank line contains whitespace
+   |
+75 |         scorer = BM25Scorer()
+76 |         scorer.fit(documents)
+77 |         
+   | ^^^^^^^^ W293
+78 |         assert scorer.doc_lengths == [3, 2, 5]
+79 |         assert scorer.avg_doc_length == (3 + 2 + 5) / 3
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:80:1: W293 [*] Blank line contains whitespace
+   |
+78 |         assert scorer.doc_lengths == [3, 2, 5]
+79 |         assert scorer.avg_doc_length == (3 + 2 + 5) / 3
+80 |     
+   | ^^^^ W293
+81 |     def test_fit_calculates_idf_scores(self):
+82 |         """Test IDF score calculation."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:88:1: W293 [*] Blank line contains whitespace
+   |
+86 |             "the lazy dog sleeps"     # 'the' appears in doc 2
+87 |         ]
+88 |         
+   | ^^^^^^^^ W293
+89 |         scorer = BM25Scorer()
+90 |         scorer.fit(documents)
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:91:1: W293 [*] Blank line contains whitespace
+   |
+89 |         scorer = BM25Scorer()
+90 |         scorer.fit(documents)
+91 |         
+   | ^^^^^^^^ W293
+92 |         # 'the' appears in 2 out of 3 documents
+93 |         # IDF = log((N + 1) / df) = log((3 + 1) / 2) = log(2)
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_bm25.py:104:1: W293 [*] Blank line contains whitespace
+    |
+102 |         expected_idf_fox = math.log((3 + 1) / 1)
+103 |         assert abs(scorer.idf_scores["fox"] - expected_idf_fox) < 1e-6
+104 |     
+    | ^^^^ W293
+105 |     def test_score_simple_query(self):
+106 |         """Test scoring a simple query against documents."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:109:35: W291 [*] Trailing whitespace
+    |
+107 |         documents = [
+108 |             "the quick brown fox jumps",
+109 |             "the lazy dog sleeps", 
+    |                                   ^ W291
+110 |             "a fox runs quickly"
+111 |         ]
+    |
+    = help: Remove trailing whitespace
+
+tests/test_bm25.py:112:1: W293 [*] Blank line contains whitespace
+    |
+110 |             "a fox runs quickly"
+111 |         ]
+112 |         
+    | ^^^^^^^^ W293
+113 |         scorer = BM25Scorer()
+114 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:115:1: W293 [*] Blank line contains whitespace
+    |
+113 |         scorer = BM25Scorer()
+114 |         scorer.fit(documents)
+115 |         
+    | ^^^^^^^^ W293
+116 |         # Score query "fox" against each document
+117 |         scores = [scorer.score("fox", i) for i in range(len(documents))]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:118:1: W293 [*] Blank line contains whitespace
+    |
+116 |         # Score query "fox" against each document
+117 |         scores = [scorer.score("fox", i) for i in range(len(documents))]
+118 |         
+    | ^^^^^^^^ W293
+119 |         # Document 0 and 2 contain "fox", document 1 doesn't
+120 |         assert scores[0] > 0  # Contains "fox"
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:121:55: W291 [*] Trailing whitespace
+    |
+119 |         # Document 0 and 2 contain "fox", document 1 doesn't
+120 |         assert scores[0] > 0  # Contains "fox"
+121 |         assert scores[1] == 0  # Doesn't contain "fox"  
+    |                                                       ^^ W291
+122 |         assert scores[2] > 0  # Contains "fox"
+    |
+    = help: Remove trailing whitespace
+
+tests/test_bm25.py:123:1: W293 [*] Blank line contains whitespace
+    |
+121 |         assert scores[1] == 0  # Doesn't contain "fox"  
+122 |         assert scores[2] > 0  # Contains "fox"
+123 |     
+    | ^^^^ W293
+124 |     def test_score_multi_term_query(self):
+125 |         """Test scoring a multi-term query."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:128:43: W291 [*] Trailing whitespace
+    |
+126 |         documents = [
+127 |             "machine learning algorithms",
+128 |             "natural language processing", 
+    |                                           ^ W291
+129 |             "machine learning techniques for natural language"
+130 |         ]
+    |
+    = help: Remove trailing whitespace
+
+tests/test_bm25.py:131:1: W293 [*] Blank line contains whitespace
+    |
+129 |             "machine learning techniques for natural language"
+130 |         ]
+131 |         
+    | ^^^^^^^^ W293
+132 |         scorer = BM25Scorer()
+133 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:134:1: W293 [*] Blank line contains whitespace
+    |
+132 |         scorer = BM25Scorer()
+133 |         scorer.fit(documents)
+134 |         
+    | ^^^^^^^^ W293
+135 |         # Query contains both terms in documents 0 and 2
+136 |         scores = [scorer.score("machine learning", i) for i in range(len(documents))]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:137:1: W293 [*] Blank line contains whitespace
+    |
+135 |         # Query contains both terms in documents 0 and 2
+136 |         scores = [scorer.score("machine learning", i) for i in range(len(documents))]
+137 |         
+    | ^^^^^^^^ W293
+138 |         assert scores[0] > 0  # Contains both terms
+139 |         assert scores[1] == 0  # Contains neither term
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:141:1: W293 [*] Blank line contains whitespace
+    |
+139 |         assert scores[1] == 0  # Contains neither term
+140 |         assert scores[2] > 0  # Contains both terms
+141 |         
+    | ^^^^^^^^ W293
+142 |         # Document 2 has both terms plus additional context, might score differently
+143 |         assert all(score >= 0 for score in scores)  # All scores non-negative
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:144:1: W293 [*] Blank line contains whitespace
+    |
+142 |         # Document 2 has both terms plus additional context, might score differently
+143 |         assert all(score >= 0 for score in scores)  # All scores non-negative
+144 |     
+    | ^^^^ W293
+145 |     def test_score_nonexistent_query_term(self):
+146 |         """Test scoring with query terms not in any document."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:148:1: W293 [*] Blank line contains whitespace
+    |
+146 |         """Test scoring with query terms not in any document."""
+147 |         documents = ["cat dog bird", "fish whale shark"]
+148 |         
+    | ^^^^^^^^ W293
+149 |         scorer = BM25Scorer()
+150 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:151:1: W293 [*] Blank line contains whitespace
+    |
+149 |         scorer = BM25Scorer()
+150 |         scorer.fit(documents)
+151 |         
+    | ^^^^^^^^ W293
+152 |         # Query with term not in any document
+153 |         scores = [scorer.score("elephant", i) for i in range(len(documents))]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:154:1: W293 [*] Blank line contains whitespace
+    |
+152 |         # Query with term not in any document
+153 |         scores = [scorer.score("elephant", i) for i in range(len(documents))]
+154 |         
+    | ^^^^^^^^ W293
+155 |         # All scores should be 0
+156 |         assert all(score == 0 for score in scores)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:157:1: W293 [*] Blank line contains whitespace
+    |
+155 |         # All scores should be 0
+156 |         assert all(score == 0 for score in scores)
+157 |     
+    | ^^^^ W293
+158 |     def test_score_invalid_document_index(self):
+159 |         """Test scoring with invalid document index."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:161:1: W293 [*] Blank line contains whitespace
+    |
+159 |         """Test scoring with invalid document index."""
+160 |         documents = ["test document"]
+161 |         
+    | ^^^^^^^^ W293
+162 |         scorer = BM25Scorer()
+163 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:164:1: W293 [*] Blank line contains whitespace
+    |
+162 |         scorer = BM25Scorer()
+163 |         scorer.fit(documents)
+164 |         
+    | ^^^^^^^^ W293
+165 |         # Invalid document index should return 0
+166 |         assert scorer.score("test", 5) == 0  # Index out of range
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:168:1: W293 [*] Blank line contains whitespace
+    |
+166 |         assert scorer.score("test", 5) == 0  # Index out of range
+167 |         assert scorer.score("test", -1) == 0  # Negative index
+168 |     
+    | ^^^^ W293
+169 |     def test_score_relevance_ranking(self):
+170 |         """Test that BM25 scores rank documents by relevance correctly."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:174:84: W291 [*] Trailing whitespace
+    |
+172 |             "machine learning is a subset of artificial intelligence",  # Relevant
+173 |             "cats and dogs are pets",  # Not relevant
+174 |             "machine learning algorithms use statistical methods",  # Very relevant  
+    |                                                                                    ^^ W291
+175 |             "learning to cook is fun"  # Somewhat relevant (contains 'learning')
+176 |         ]
+    |
+    = help: Remove trailing whitespace
+
+tests/test_bm25.py:177:1: W293 [*] Blank line contains whitespace
+    |
+175 |             "learning to cook is fun"  # Somewhat relevant (contains 'learning')
+176 |         ]
+177 |         
+    | ^^^^^^^^ W293
+178 |         scorer = BM25Scorer()
+179 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:180:1: W293 [*] Blank line contains whitespace
+    |
+178 |         scorer = BM25Scorer()
+179 |         scorer.fit(documents)
+180 |         
+    | ^^^^^^^^ W293
+181 |         query = "machine learning algorithms"
+182 |         scores = [scorer.score(query, i) for i in range(len(documents))]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:183:1: W293 [*] Blank line contains whitespace
+    |
+181 |         query = "machine learning algorithms"
+182 |         scores = [scorer.score(query, i) for i in range(len(documents))]
+183 |         
+    | ^^^^^^^^ W293
+184 |         # Document 2 should score highest (has all query terms)
+185 |         # Document 0 should score second (has 'machine learning')  
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:185:66: W291 [*] Trailing whitespace
+    |
+184 |         # Document 2 should score highest (has all query terms)
+185 |         # Document 0 should score second (has 'machine learning')  
+    |                                                                  ^^ W291
+186 |         # Document 1 should score lowest (no relevant terms)
+187 |         # Document 3 should score low (only has 'learning')
+    |
+    = help: Remove trailing whitespace
+
+tests/test_bm25.py:188:1: W293 [*] Blank line contains whitespace
+    |
+186 |         # Document 1 should score lowest (no relevant terms)
+187 |         # Document 3 should score low (only has 'learning')
+188 |         
+    | ^^^^^^^^ W293
+189 |         assert scores[2] > scores[0]  # Most relevant doc scores highest
+190 |         assert scores[0] > scores[3]  # More relevant than partial match
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:193:1: W293 [*] Blank line contains whitespace
+    |
+191 |         assert scores[3] > scores[1] or scores[3] == 0  # Partial match better than none
+192 |         assert scores[1] == 0  # Irrelevant document scores 0
+193 |     
+    | ^^^^ W293
+194 |     def test_score_frequency_affects_ranking(self):
+195 |         """Test that term frequency affects BM25 scores."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:201:1: W293 [*] Blank line contains whitespace
+    |
+199 |             "deep neural networks"  # Different terms
+200 |         ]
+201 |         
+    | ^^^^^^^^ W293
+202 |         scorer = BM25Scorer()
+203 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:204:1: W293 [*] Blank line contains whitespace
+    |
+202 |         scorer = BM25Scorer()
+203 |         scorer.fit(documents)
+204 |         
+    | ^^^^^^^^ W293
+205 |         query = "machine learning"
+206 |         scores = [scorer.score(query, i) for i in range(len(documents))]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:207:1: W293 [*] Blank line contains whitespace
+    |
+205 |         query = "machine learning"
+206 |         scores = [scorer.score(query, i) for i in range(len(documents))]
+207 |         
+    | ^^^^^^^^ W293
+208 |         # Document 1 has higher term frequency, should score higher than document 0
+209 |         assert scores[1] > scores[0]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:211:1: W293 [*] Blank line contains whitespace
+    |
+209 |         assert scores[1] > scores[0]
+210 |         assert scores[2] == 0  # No matching terms
+211 |     
+    | ^^^^ W293
+212 |     def test_empty_documents_list(self):
+213 |         """Test BM25 with empty documents list."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:216:1: W293 [*] Blank line contains whitespace
+    |
+214 |         scorer = BM25Scorer()
+215 |         scorer.fit([])
+216 |         
+    | ^^^^^^^^ W293
+217 |         assert scorer.doc_count == 0
+218 |         assert scorer.avg_doc_length == 0
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:220:1: W293 [*] Blank line contains whitespace
+    |
+218 |         assert scorer.avg_doc_length == 0
+219 |         assert len(scorer.idf_scores) == 0
+220 |     
+    | ^^^^ W293
+221 |     def test_single_document(self):
+222 |         """Test BM25 with a single document."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:224:1: W293 [*] Blank line contains whitespace
+    |
+222 |         """Test BM25 with a single document."""
+223 |         documents = ["single test document"]
+224 |         
+    | ^^^^^^^^ W293
+225 |         scorer = BM25Scorer()
+226 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:227:1: W293 [*] Blank line contains whitespace
+    |
+225 |         scorer = BM25Scorer()
+226 |         scorer.fit(documents)
+227 |         
+    | ^^^^^^^^ W293
+228 |         assert scorer.doc_count == 1
+229 |         assert len(scorer.doc_lengths) == 1
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:230:1: W293 [*] Blank line contains whitespace
+    |
+228 |         assert scorer.doc_count == 1
+229 |         assert len(scorer.doc_lengths) == 1
+230 |         
+    | ^^^^^^^^ W293
+231 |         # Score should work with single document
+232 |         score = scorer.score("test", 0)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:234:1: W293 [*] Blank line contains whitespace
+    |
+232 |         score = scorer.score("test", 0)
+233 |         assert score > 0
+234 |     
+    | ^^^^ W293
+235 |     @pytest.mark.parametrize("k1,b", [
+236 |         (1.0, 0.5),
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:244:1: W293 [*] Blank line contains whitespace
+    |
+242 |         """Test BM25 with different k1 and b parameters."""
+243 |         documents = ["test document for parameter testing"]
+244 |         
+    | ^^^^^^^^ W293
+245 |         scorer = BM25Scorer(k1=k1, b=b)
+246 |         scorer.fit(documents)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:247:1: W293 [*] Blank line contains whitespace
+    |
+245 |         scorer = BM25Scorer(k1=k1, b=b)
+246 |         scorer.fit(documents)
+247 |         
+    | ^^^^^^^^ W293
+248 |         score = scorer.score("test", 0)
+249 |         assert score >= 0  # Score should always be non-negative
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_bm25.py:250:47: W292 [*] No newline at end of file
+    |
+248 |         score = scorer.score("test", 0)
+249 |         assert score >= 0  # Score should always be non-negative
+250 |         assert isinstance(score, (int, float))
+    |                                               ^ W292
+    |
+    = help: Add trailing newline
+
+tests/test_chunking.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+  |
+1 |   """Tests for text chunking functionality in raggy."""
+2 |
+3 | / import pytest
+4 | | from pathlib import Path
+5 | | from raggy.core.document import DocumentProcessor
+  | |_________________________________________________^ I001
+  |
+  = help: Organize imports
+
+tests/test_chunking.py:4:21: F401 [*] `pathlib.Path` imported but unused
+  |
+3 | import pytest
+4 | from pathlib import Path
+  |                     ^^^^ F401
+5 | from raggy.core.document import DocumentProcessor
+  |
+  = help: Remove unused import: `pathlib.Path`
+
+tests/test_document_processing.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+  |
+1 |   """Tests for document processing functionality in raggy."""
+2 |
+3 | / import pytest
+4 | | from pathlib import Path
+5 | | from unittest.mock import patch, MagicMock
+6 | | from raggy.core.document import DocumentProcessor
+  | |_________________________________________________^ I001
+  |
+  = help: Organize imports
+
+tests/test_document_processing.py:4:21: F401 [*] `pathlib.Path` imported but unused
+  |
+3 | import pytest
+4 | from pathlib import Path
+  |                     ^^^^ F401
+5 | from unittest.mock import patch, MagicMock
+6 | from raggy.core.document import DocumentProcessor
+  |
+  = help: Remove unused import: `pathlib.Path`
+
+tests/test_document_processing.py:20:1: W293 [*] Blank line contains whitespace
+   |
+18 |             quiet=True
+19 |         )
+20 |     
+   | ^^^^ W293
+21 |     def test_find_documents_empty_directory(self, document_processor):
+22 |         """Test finding documents in empty directory."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:31:1: W293 [*] Blank line contains whitespace
+   |
+29 |         assert len(files) == 0
+30 |         assert isinstance(files, list)
+31 |     
+   | ^^^^ W293
+32 |     def test_find_documents_creates_directory_if_missing(self, document_processor):
+33 |         """Test that find_documents creates docs directory if it doesn't exist."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:47:1: W293 [*] Blank line contains whitespace
+   |
+45 |         assert len(files) == 0
+46 |         assert isinstance(files, list)
+47 |     
+   | ^^^^ W293
+48 |     def test_find_documents_supported_formats(self, document_processor, sample_documents):
+49 |         """Test finding all supported document formats."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:63:9: F841 Local variable `expected_extensions` is assigned to but never used
+   |
+61 |         # Assert: Should find all files
+62 |         file_extensions = {f.suffix.lower() for f in files}
+63 |         expected_extensions = {".md", ".txt"}  # PDF will be found but not processed in this test
+   |         ^^^^^^^^^^^^^^^^^^^ F841
+64 |
+65 |         # Check that we find the expected types
+   |
+   = help: Remove assignment to unused variable `expected_extensions`
+
+tests/test_document_processing.py:69:1: W293 [*] Blank line contains whitespace
+   |
+67 |         assert ".txt" in file_extensions
+68 |         # Note: PDF needs proper handling, so we test it separately
+69 |     
+   | ^^^^ W293
+70 |     def test_find_documents_nested_directories(self, document_processor, sample_documents):
+71 |         """Test finding documents in nested directories."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:88:1: W293 [*] Blank line contains whitespace
+   |
+86 |         file_paths = [str(f.relative_to(sample_documents)) for f in files]
+87 |         assert any("subdir" in path for path in file_paths)
+88 |     
+   | ^^^^ W293
+89 |     def test_extract_text_from_md(self, document_processor, sample_documents, sample_md_content):
+90 |         """Test extracting text from markdown files."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:102:1: W293 [*] Blank line contains whitespace
+    |
+100 |         assert "# Test Document" in extracted_text
+101 |         assert "## Features" in extracted_text
+102 |     
+    | ^^^^ W293
+103 |     def test_extract_text_from_txt(self, document_processor, sample_documents, sample_txt_content):
+104 |         """Test extracting text from plain text files."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:115:1: W293 [*] Blank line contains whitespace
+    |
+113 |         assert extracted_text.strip() == sample_txt_content.strip()
+114 |         assert "plain text document" in extracted_text
+115 |     
+    | ^^^^ W293
+116 |     def test_extract_text_from_txt_encoding_fallback(self, document_processor, sample_documents):
+117 |         """Test text extraction with encoding fallback."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:128:1: W293 [*] Blank line contains whitespace
+    |
+126 |         # Assert: Content should be extracted (may have encoding differences)
+127 |         assert len(extracted_text) > 0
+128 |     
+    | ^^^^ W293
+129 |     def test_extract_text_from_nonexistent_file(self, document_processor, temp_dir):
+130 |         """Test extracting text from non-existent file."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:139:1: W293 [*] Blank line contains whitespace
+    |
+137 |         # Assert: Should handle gracefully and return empty string
+138 |         assert result == ""
+139 |     
+    | ^^^^ W293
+140 |     def test_get_file_hash(self, document_processor, sample_documents):
+141 |         """Test file hash generation."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:163:1: W293 [*] Blank line contains whitespace
+    |
+161 |         # Assert: Different content should produce different hash
+162 |         assert hash1 != hash3
+163 |     
+    | ^^^^ W293
+164 |     def test_process_document_markdown(self, document_processor, sample_documents, sample_md_content):
+165 |         """Test processing a markdown document."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:192:1: W293 [*] Blank line contains whitespace
+    |
+190 |             # Text should not be empty
+191 |             assert len(doc["text"].strip()) > 0
+192 |     
+    | ^^^^ W293
+193 |     def test_process_document_text_file(self, document_processor, sample_documents, sample_txt_content):
+194 |         """Test processing a plain text document."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:211:1: W293 [*] Blank line contains whitespace
+    |
+209 |         # Check file type metadata
+210 |         assert all(doc["metadata"]["file_type"] == ".txt" for doc in documents)
+211 |     
+    | ^^^^ W293
+212 |     def test_process_document_creates_proper_ids(self, document_processor, sample_documents):
+213 |         """Test that document processing creates proper unique IDs."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:233:1: W293 [*] Blank line contains whitespace
+    |
+231 |                 assert "id_test" in doc_id  # Contains filename
+232 |                 assert len(doc_id.split("_")) >= 3  # filename_hash_index pattern
+233 |     
+    | ^^^^ W293
+234 |     def test_process_document_chunk_indices(self, document_processor, sample_documents):
+235 |         """Test that chunk indices are assigned correctly."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:252:1: W293 [*] Blank line contains whitespace
+    |
+250 |                 assert doc["metadata"]["chunk_index"] == i
+251 |                 assert doc["metadata"]["total_chunks"] == len(documents)
+252 |     
+    | ^^^^ W293
+253 |     def test_process_document_unsupported_format(self, document_processor, sample_documents):
+254 |         """Test processing unsupported file format."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:265:1: W293 [*] Blank line contains whitespace
+    |
+263 |         # Assert: Should return empty list for unsupported format
+264 |         assert len(documents) == 0
+265 |     
+    | ^^^^ W293
+266 |     def test_process_document_empty_file(self, document_processor, sample_documents):
+267 |         """Test processing empty file."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:278:1: W293 [*] Blank line contains whitespace
+    |
+276 |         # Assert: Should return empty list for empty file
+277 |         assert len(documents) == 0
+278 |     
+    | ^^^^ W293
+279 |     def test_process_document_whitespace_only_file(self, document_processor, sample_documents):
+280 |         """Test processing file with only whitespace."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:291:1: W293 [*] Blank line contains whitespace
+    |
+289 |         # Assert: Should return empty list for whitespace-only file
+290 |         assert len(documents) == 0
+291 |     
+    | ^^^^ W293
+292 |     def test_extract_text_from_pdf_success(self, document_processor, sample_documents):
+293 |         """Test successful PDF text extraction."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:313:1: W293 [*] Blank line contains whitespace
+    |
+311 |             assert extracted_text == "Extracted PDF content"
+312 |             mock_pdf_reader.assert_called_once()
+313 |     
+    | ^^^^ W293
+314 |     def test_extract_text_from_pdf_error(self, document_processor, sample_documents):
+315 |         """Test PDF text extraction with error."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:326:1: W293 [*] Blank line contains whitespace
+    |
+324 |             # Assert: Should return empty string on error
+325 |             assert extracted_text == ""
+326 |     
+    | ^^^^ W293
+327 |     def test_extract_text_from_docx_success(self, document_processor, sample_documents):
+328 |         """Test successful DOCX text extraction."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:349:1: W293 [*] Blank line contains whitespace
+    |
+347 |             assert "DOCX paragraph content" in extracted_text
+348 |             mock_document_class.assert_called_once_with(docx_file)
+349 |     
+    | ^^^^ W293
+350 |     def test_extract_text_from_docx_with_tables(self, document_processor, sample_documents):
+351 |         """Test DOCX text extraction including tables."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:377:1: W293 [*] Blank line contains whitespace
+    |
+375 |             # Assert: Should extract table content
+376 |             assert "Cell content | Cell content" in extracted_text
+377 |     
+    | ^^^^ W293
+378 |     def test_process_document_preserves_relative_path(self, document_processor, sample_documents):
+379 |         """Test that document processing preserves relative paths correctly."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:399:1: W293 [*] Blank line contains whitespace
+    |
+397 |         expected_path = "category/subcategory/nested_doc.md"
+398 |         assert documents[0]["metadata"]["source"] == expected_path
+399 |     
+    | ^^^^ W293
+400 |     def test_process_document_file_hash_consistency(self, document_processor, sample_documents):
+401 |         """Test that file hash is consistent for same content."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_document_processing.py:425:30: W292 [*] No newline at end of file
+    |
+423 |         # Assert: Hash should change
+424 |         hash3 = documents3[0]["metadata"]["file_hash"]
+425 |         assert hash1 != hash3
+    |                              ^ W292
+    |
+    = help: Add trailing newline
+
+tests/test_interactive_setup.py:4:8: F401 [*] `sys` imported but unused
+  |
+3 | import json
+4 | import sys
+  |        ^^^ F401
+5 | from pathlib import Path
+6 | from unittest.mock import MagicMock, patch
+  |
+  = help: Remove unused import: `sys`
+
+tests/test_interactive_setup.py:5:21: F401 [*] `pathlib.Path` imported but unused
+  |
+3 | import json
+4 | import sys
+5 | from pathlib import Path
+  |                     ^^^^ F401
+6 | from unittest.mock import MagicMock, patch
+  |
+  = help: Remove unused import: `pathlib.Path`
+
+tests/test_interactive_setup.py:352:32: UP015 [*] Unnecessary mode argument
+    |
+351 |         assert config_file.exists()
+352 |         with open(config_file, 'r') as f:
+    |                                ^^^ UP015
+353 |             saved_config = json.load(f)
+354 |         assert saved_config["vectorStore"]["provider"] == "chromadb"
+    |
+    = help: Remove mode argument
+
+tests/test_query_processor.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+  |
+1 |   """Tests for QueryProcessor functionality."""
+2 |
+3 | / import pytest
+4 | | from raggy import QueryProcessor
+  | |________________________________^ I001
+  |
+  = help: Organize imports
+
+tests/test_query_processor.py:9:1: W293 [*] Blank line contains whitespace
+   |
+ 7 | class TestQueryProcessor:
+ 8 |     """Test the QueryProcessor class."""
+ 9 |     
+   | ^^^^ W293
+10 |     def test_initialization_default(self):
+11 |         """Test QueryProcessor initialization with default expansions."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:13:1: W293 [*] Blank line contains whitespace
+   |
+11 |         """Test QueryProcessor initialization with default expansions."""
+12 |         processor = QueryProcessor()
+13 |         
+   | ^^^^^^^^ W293
+14 |         # Check default expansions are loaded
+15 |         assert "api" in processor.expansions
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:20:1: W293 [*] Blank line contains whitespace
+   |
+18 |         assert "ui" in processor.expansions
+19 |         assert "ux" in processor.expansions
+20 |         
+   | ^^^^^^^^ W293
+21 |         # Verify expansion contents
+22 |         assert processor.expansions["api"] == ["api", "application programming interface"]
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:24:1: W293 [*] Blank line contains whitespace
+   |
+22 |         assert processor.expansions["api"] == ["api", "application programming interface"]
+23 |         assert processor.expansions["ml"] == ["ml", "machine learning"]
+24 |     
+   | ^^^^ W293
+25 |     def test_initialization_custom_expansions(self):
+26 |         """Test QueryProcessor initialization with custom expansions."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:31:1: W293 [*] Blank line contains whitespace
+   |
+29 |             "js": ["js", "javascript"]
+30 |         }
+31 |         
+   | ^^^^^^^^ W293
+32 |         processor = QueryProcessor(custom_expansions)
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:33:1: W293 [*] Blank line contains whitespace
+   |
+32 |         processor = QueryProcessor(custom_expansions)
+33 |         
+   | ^^^^^^^^ W293
+34 |         # Should use custom expansions only
+35 |         assert processor.expansions == custom_expansions
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:39:1: W293 [*] Blank line contains whitespace
+   |
+37 |         assert "db" in processor.expansions
+38 |         assert "js" in processor.expansions
+39 |     
+   | ^^^^ W293
+40 |     def test_detect_type_keyword(self):
+41 |         """Test detection of keyword query type."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:43:1: W293 [*] Blank line contains whitespace
+   |
+41 |         """Test detection of keyword query type."""
+42 |         processor = QueryProcessor()
+43 |         
+   | ^^^^^^^^ W293
+44 |         assert processor._detect_type("machine learning") == "keyword"
+45 |         assert processor._detect_type("python programming") == "keyword"
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:47:1: W293 [*] Blank line contains whitespace
+   |
+45 |         assert processor._detect_type("python programming") == "keyword"
+46 |         assert processor._detect_type("single") == "keyword"
+47 |     
+   | ^^^^ W293
+48 |     def test_detect_type_exact(self):
+49 |         """Test detection of exact phrase query type."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:51:1: W293 [*] Blank line contains whitespace
+   |
+49 |         """Test detection of exact phrase query type."""
+50 |         processor = QueryProcessor()
+51 |         
+   | ^^^^^^^^ W293
+52 |         assert processor._detect_type('"exact phrase"') == "exact"
+53 |         assert processor._detect_type('"machine learning"') == "exact"
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:55:1: W293 [*] Blank line contains whitespace
+   |
+53 |         assert processor._detect_type('"machine learning"') == "exact"
+54 |         assert processor._detect_type('"single word"') == "exact"
+55 |     
+   | ^^^^ W293
+56 |     def test_detect_type_question(self):
+57 |         """Test detection of question query type."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:59:1: W293 [*] Blank line contains whitespace
+   |
+57 |         """Test detection of question query type."""
+58 |         processor = QueryProcessor()
+59 |         
+   | ^^^^^^^^ W293
+60 |         assert processor._detect_type("How does this work?") == "question"
+61 |         assert processor._detect_type("What is machine learning?") == "question"
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:66:1: W293 [*] Blank line contains whitespace
+   |
+64 |         assert processor._detect_type("Where can I find docs?") == "question"
+65 |         assert processor._detect_type("Who created this?") == "question"
+66 |     
+   | ^^^^ W293
+67 |     def test_detect_type_boolean(self):
+68 |         """Test detection of boolean query type."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:70:1: W293 [*] Blank line contains whitespace
+   |
+68 |         """Test detection of boolean query type."""
+69 |         processor = QueryProcessor()
+70 |         
+   | ^^^^^^^^ W293
+71 |         assert processor._detect_type("machine learning AND algorithms") == "boolean"
+72 |         assert processor._detect_type("python OR javascript") == "boolean"
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:75:1: W293 [*] Blank line contains whitespace
+   |
+73 |         assert processor._detect_type("api -deprecated") == "boolean"
+74 |         assert processor._detect_type("search -old") == "boolean"
+75 |     
+   | ^^^^ W293
+76 |     def test_expand_query_simple(self):
+77 |         """Test simple query expansion."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:79:1: W293 [*] Blank line contains whitespace
+   |
+77 |         """Test simple query expansion."""
+78 |         processor = QueryProcessor()
+79 |         
+   | ^^^^^^^^ W293
+80 |         # Test API expansion
+81 |         expanded = processor._expand_query("api documentation")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:84:1: W293 [*] Blank line contains whitespace
+   |
+82 |         assert "application programming interface" in expanded
+83 |         assert "api" in expanded
+84 |         
+   | ^^^^^^^^ W293
+85 |         # Test ML expansion  
+86 |         expanded = processor._expand_query("ml algorithms")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:85:28: W291 [*] Trailing whitespace
+   |
+83 |         assert "api" in expanded
+84 |         
+85 |         # Test ML expansion  
+   |                            ^^ W291
+86 |         expanded = processor._expand_query("ml algorithms")
+87 |         assert "machine learning" in expanded
+   |
+   = help: Remove trailing whitespace
+
+tests/test_query_processor.py:89:1: W293 [*] Blank line contains whitespace
+   |
+87 |         assert "machine learning" in expanded
+88 |         assert "ml" in expanded
+89 |     
+   | ^^^^ W293
+90 |     def test_expand_query_multiple_terms(self):
+91 |         """Test query expansion with multiple expandable terms."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:93:1: W293 [*] Blank line contains whitespace
+   |
+91 |         """Test query expansion with multiple expandable terms."""
+92 |         processor = QueryProcessor()
+93 |         
+   | ^^^^^^^^ W293
+94 |         expanded = processor._expand_query("api and ml")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:95:1: W293 [*] Blank line contains whitespace
+   |
+94 |         expanded = processor._expand_query("api and ml")
+95 |         
+   | ^^^^^^^^ W293
+96 |         # Should expand both terms
+97 |         assert "application programming interface" in expanded
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:100:1: W293 [*] Blank line contains whitespace
+    |
+ 98 |         assert "machine learning" in expanded
+ 99 |         assert "OR" in expanded  # Should use OR syntax
+100 |     
+    | ^^^^ W293
+101 |     def test_expand_query_no_expansion_needed(self):
+102 |         """Test query expansion when no terms need expanding."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:104:1: W293 [*] Blank line contains whitespace
+    |
+102 |         """Test query expansion when no terms need expanding."""
+103 |         processor = QueryProcessor()
+104 |         
+    | ^^^^^^^^ W293
+105 |         original = "python programming tutorial"
+106 |         expanded = processor._expand_query(original)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:107:1: W293 [*] Blank line contains whitespace
+    |
+105 |         original = "python programming tutorial"
+106 |         expanded = processor._expand_query(original)
+107 |         
+    | ^^^^^^^^ W293
+108 |         # Should return same query (lowercased)
+109 |         assert expanded == original.lower()
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:110:1: W293 [*] Blank line contains whitespace
+    |
+108 |         # Should return same query (lowercased)
+109 |         assert expanded == original.lower()
+110 |     
+    | ^^^^ W293
+111 |     def test_extract_operators_negative_terms(self):
+112 |         """Test extraction of negative terms."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:114:1: W293 [*] Blank line contains whitespace
+    |
+112 |         """Test extraction of negative terms."""
+113 |         processor = QueryProcessor()
+114 |         
+    | ^^^^^^^^ W293
+115 |         must_have, must_not = processor._extract_operators("machine learning -deprecated -old")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:116:1: W293 [*] Blank line contains whitespace
+    |
+115 |         must_have, must_not = processor._extract_operators("machine learning -deprecated -old")
+116 |         
+    | ^^^^^^^^ W293
+117 |         assert must_not == ["deprecated", "old"]
+118 |         assert must_have == []  # No AND terms in this example
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:119:1: W293 [*] Blank line contains whitespace
+    |
+117 |         assert must_not == ["deprecated", "old"]
+118 |         assert must_have == []  # No AND terms in this example
+119 |     
+    | ^^^^ W293
+120 |     def test_extract_operators_and_terms(self):
+121 |         """Test extraction of AND terms."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:123:1: W293 [*] Blank line contains whitespace
+    |
+121 |         """Test extraction of AND terms."""
+122 |         processor = QueryProcessor()
+123 |         
+    | ^^^^^^^^ W293
+124 |         must_have, must_not = processor._extract_operators("machine AND learning AND algorithms")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:125:1: W293 [*] Blank line contains whitespace
+    |
+124 |         must_have, must_not = processor._extract_operators("machine AND learning AND algorithms")
+125 |         
+    | ^^^^^^^^ W293
+126 |         assert "machine" in must_have
+127 |         assert "learning" in must_have  
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:127:39: W291 [*] Trailing whitespace
+    |
+126 |         assert "machine" in must_have
+127 |         assert "learning" in must_have  
+    |                                       ^^ W291
+128 |         assert must_not == []
+    |
+    = help: Remove trailing whitespace
+
+tests/test_query_processor.py:129:1: W293 [*] Blank line contains whitespace
+    |
+127 |         assert "learning" in must_have  
+128 |         assert must_not == []
+129 |     
+    | ^^^^ W293
+130 |     def test_extract_operators_mixed(self):
+131 |         """Test extraction of mixed boolean operators."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:133:1: W293 [*] Blank line contains whitespace
+    |
+131 |         """Test extraction of mixed boolean operators."""
+132 |         processor = QueryProcessor()
+133 |         
+    | ^^^^^^^^ W293
+134 |         must_have, must_not = processor._extract_operators("machine AND learning -deprecated")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:135:1: W293 [*] Blank line contains whitespace
+    |
+134 |         must_have, must_not = processor._extract_operators("machine AND learning -deprecated")
+135 |         
+    | ^^^^^^^^ W293
+136 |         assert "machine" in must_have
+137 |         assert "deprecated" in must_not
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:138:1: W293 [*] Blank line contains whitespace
+    |
+136 |         assert "machine" in must_have
+137 |         assert "deprecated" in must_not
+138 |     
+    | ^^^^ W293
+139 |     def test_process_keyword_query(self, query_processor_test_cases):
+140 |         """Test processing of keyword queries."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:142:1: W293 [*] Blank line contains whitespace
+    |
+140 |         """Test processing of keyword queries."""
+141 |         processor = QueryProcessor()
+142 |         
+    | ^^^^^^^^ W293
+143 |         result = processor.process("machine learning")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:144:1: W293 [*] Blank line contains whitespace
+    |
+143 |         result = processor.process("machine learning")
+144 |         
+    | ^^^^^^^^ W293
+145 |         assert result["original"] == "machine learning"
+146 |         assert result["type"] == "keyword"
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:150:1: W293 [*] Blank line contains whitespace
+    |
+148 |         assert "machine" in result["terms"]
+149 |         assert "learning" in result["terms"]
+150 |     
+    | ^^^^ W293
+151 |     def test_process_exact_phrase_query(self):
+152 |         """Test processing of exact phrase queries."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:154:1: W293 [*] Blank line contains whitespace
+    |
+152 |         """Test processing of exact phrase queries."""
+153 |         processor = QueryProcessor()
+154 |         
+    | ^^^^^^^^ W293
+155 |         result = processor.process('"machine learning"')
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:156:1: W293 [*] Blank line contains whitespace
+    |
+155 |         result = processor.process('"machine learning"')
+156 |         
+    | ^^^^^^^^ W293
+157 |         assert result["original"] == '"machine learning"'
+158 |         assert result["type"] == "exact"
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:162:1: W293 [*] Blank line contains whitespace
+    |
+160 |         assert result["processed"] == "machine learning"
+161 |         assert result["terms"] == ["machine learning"]
+162 |     
+    | ^^^^ W293
+163 |     def test_process_question_query(self):
+164 |         """Test processing of question queries."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:166:1: W293 [*] Blank line contains whitespace
+    |
+164 |         """Test processing of question queries."""
+165 |         processor = QueryProcessor()
+166 |         
+    | ^^^^^^^^ W293
+167 |         result = processor.process("How does machine learning work?")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:168:1: W293 [*] Blank line contains whitespace
+    |
+167 |         result = processor.process("How does machine learning work?")
+168 |         
+    | ^^^^^^^^ W293
+169 |         assert result["type"] == "question"
+170 |         assert result["boost_exact"] is False
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:174:1: W293 [*] Blank line contains whitespace
+    |
+172 |         assert "machine" in result["terms"]
+173 |         assert "learning" in result["terms"]
+174 |     
+    | ^^^^ W293
+175 |     def test_process_boolean_query_with_negation(self):
+176 |         """Test processing of boolean queries with negation."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:178:1: W293 [*] Blank line contains whitespace
+    |
+176 |         """Test processing of boolean queries with negation."""
+177 |         processor = QueryProcessor()
+178 |         
+    | ^^^^^^^^ W293
+179 |         result = processor.process("machine learning -deep")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:180:1: W293 [*] Blank line contains whitespace
+    |
+179 |         result = processor.process("machine learning -deep")
+180 |         
+    | ^^^^^^^^ W293
+181 |         assert result["type"] == "boolean"
+182 |         assert "deep" in result["must_not"]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:184:1: W293 [*] Blank line contains whitespace
+    |
+182 |         assert "deep" in result["must_not"]
+183 |         assert result["boost_exact"] is False
+184 |     
+    | ^^^^ W293
+185 |     def test_process_boolean_query_with_and(self):
+186 |         """Test processing of boolean queries with AND."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:188:1: W293 [*] Blank line contains whitespace
+    |
+186 |         """Test processing of boolean queries with AND."""
+187 |         processor = QueryProcessor()
+188 |         
+    | ^^^^^^^^ W293
+189 |         result = processor.process("machine AND learning")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:190:1: W293 [*] Blank line contains whitespace
+    |
+189 |         result = processor.process("machine AND learning")
+190 |         
+    | ^^^^^^^^ W293
+191 |         assert result["type"] == "boolean"
+192 |         assert "machine" in result["must_have"]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:194:1: W293 [*] Blank line contains whitespace
+    |
+192 |         assert "machine" in result["must_have"]
+193 |         assert result["boost_exact"] is False
+194 |     
+    | ^^^^ W293
+195 |     def test_process_query_with_expansion(self):
+196 |         """Test processing with query expansion."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:198:1: W293 [*] Blank line contains whitespace
+    |
+196 |         """Test processing with query expansion."""
+197 |         processor = QueryProcessor()
+198 |         
+    | ^^^^^^^^ W293
+199 |         result = processor.process("api documentation")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:200:1: W293 [*] Blank line contains whitespace
+    |
+199 |         result = processor.process("api documentation")
+200 |         
+    | ^^^^^^^^ W293
+201 |         # Should expand 'api' term
+202 |         assert "application programming interface" in result["processed"]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:204:1: W293 [*] Blank line contains whitespace
+    |
+202 |         assert "application programming interface" in result["processed"]
+203 |         assert result["original"] == "api documentation"
+204 |     
+    | ^^^^ W293
+205 |     def test_process_preserves_original_query(self):
+206 |         """Test that original query is preserved during processing."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:208:1: W293 [*] Blank line contains whitespace
+    |
+206 |         """Test that original query is preserved during processing."""
+207 |         processor = QueryProcessor()
+208 |         
+    | ^^^^^^^^ W293
+209 |         original = "API Development Guide"
+210 |         result = processor.process(original)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:211:1: W293 [*] Blank line contains whitespace
+    |
+209 |         original = "API Development Guide"
+210 |         result = processor.process(original)
+211 |         
+    | ^^^^^^^^ W293
+212 |         assert result["original"] == original
+213 |         assert result["processed"].lower() != original.lower()  # Should be different due to expansion
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:214:1: W293 [*] Blank line contains whitespace
+    |
+212 |         assert result["original"] == original
+213 |         assert result["processed"].lower() != original.lower()  # Should be different due to expansion
+214 |     
+    | ^^^^ W293
+215 |     def test_process_empty_query(self):
+216 |         """Test processing of empty query."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:218:1: W293 [*] Blank line contains whitespace
+    |
+216 |         """Test processing of empty query."""
+217 |         processor = QueryProcessor()
+218 |         
+    | ^^^^^^^^ W293
+219 |         result = processor.process("")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:220:1: W293 [*] Blank line contains whitespace
+    |
+219 |         result = processor.process("")
+220 |         
+    | ^^^^^^^^ W293
+221 |         assert result["original"] == ""
+222 |         assert result["processed"] == ""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:225:1: W293 [*] Blank line contains whitespace
+    |
+223 |         assert result["type"] == "keyword"  # Default type
+224 |         assert result["terms"] == []
+225 |     
+    | ^^^^ W293
+226 |     def test_process_whitespace_only_query(self):
+227 |         """Test processing of whitespace-only query."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:229:1: W293 [*] Blank line contains whitespace
+    |
+227 |         """Test processing of whitespace-only query."""
+228 |         processor = QueryProcessor()
+229 |         
+    | ^^^^^^^^ W293
+230 |         result = processor.process("   \t\n   ")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:231:1: W293 [*] Blank line contains whitespace
+    |
+230 |         result = processor.process("   \t\n   ")
+231 |         
+    | ^^^^^^^^ W293
+232 |         assert result["original"] == "   \t\n   "
+233 |         assert result["processed"] == ""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:235:1: W293 [*] Blank line contains whitespace
+    |
+233 |         assert result["processed"] == ""
+234 |         assert result["terms"] == []
+235 |     
+    | ^^^^ W293
+236 |     def test_case_insensitive_expansion(self):
+237 |         """Test that query expansion is case insensitive."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:239:1: W293 [*] Blank line contains whitespace
+    |
+237 |         """Test that query expansion is case insensitive."""
+238 |         processor = QueryProcessor()
+239 |         
+    | ^^^^^^^^ W293
+240 |         # Test uppercase
+241 |         result_upper = processor.process("API documentation")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:243:1: W293 [*] Blank line contains whitespace
+    |
+241 |         result_upper = processor.process("API documentation")
+242 |         assert "application programming interface" in result_upper["processed"]
+243 |         
+    | ^^^^^^^^ W293
+244 |         # Test mixed case
+245 |         result_mixed = processor.process("Api Documentation")  
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:245:62: W291 [*] Trailing whitespace
+    |
+244 |         # Test mixed case
+245 |         result_mixed = processor.process("Api Documentation")  
+    |                                                              ^^ W291
+246 |         assert "application programming interface" in result_mixed["processed"]
+    |
+    = help: Remove trailing whitespace
+
+tests/test_query_processor.py:247:1: W293 [*] Blank line contains whitespace
+    |
+245 |         result_mixed = processor.process("Api Documentation")  
+246 |         assert "application programming interface" in result_mixed["processed"]
+247 |         
+    | ^^^^^^^^ W293
+248 |         # Test lowercase (already tested in other tests)
+249 |         result_lower = processor.process("api documentation")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:251:1: W293 [*] Blank line contains whitespace
+    |
+249 |         result_lower = processor.process("api documentation")
+250 |         assert "application programming interface" in result_lower["processed"]
+251 |     
+    | ^^^^ W293
+252 |     def test_custom_expansions_work(self):
+253 |         """Test that custom expansions work correctly."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:258:1: W293 [*] Blank line contains whitespace
+    |
+256 |             "ui": ["ui", "user interface", "frontend"]
+257 |         }
+258 |         
+    | ^^^^^^^^ W293
+259 |         processor = QueryProcessor(custom_expansions)
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:260:1: W293 [*] Blank line contains whitespace
+    |
+259 |         processor = QueryProcessor(custom_expansions)
+260 |         
+    | ^^^^^^^^ W293
+261 |         result = processor.process("db design")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:262:1: W293 [*] Blank line contains whitespace
+    |
+261 |         result = processor.process("db design")
+262 |         
+    | ^^^^^^^^ W293
+263 |         assert "database" in result["processed"]
+264 |         assert "data store" in result["processed"]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:265:1: W293 [*] Blank line contains whitespace
+    |
+263 |         assert "database" in result["processed"]
+264 |         assert "data store" in result["processed"]
+265 |     
+    | ^^^^ W293
+266 |     def test_expansion_preserves_other_terms(self):
+267 |         """Test that expansion preserves non-expandable terms."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:269:1: W293 [*] Blank line contains whitespace
+    |
+267 |         """Test that expansion preserves non-expandable terms."""
+268 |         processor = QueryProcessor()
+269 |         
+    | ^^^^^^^^ W293
+270 |         result = processor.process("api server configuration")
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:271:1: W293 [*] Blank line contains whitespace
+    |
+270 |         result = processor.process("api server configuration")
+271 |         
+    | ^^^^^^^^ W293
+272 |         # 'api' should be expanded
+273 |         assert "application programming interface" in result["processed"]
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:277:1: W293 [*] Blank line contains whitespace
+    |
+275 |         assert "server" in result["processed"]
+276 |         assert "configuration" in result["processed"]
+277 |     
+    | ^^^^ W293
+278 |     def test_multiple_exact_phrases_not_supported(self):
+279 |         """Test behavior with multiple quoted phrases (edge case)."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:281:1: W293 [*] Blank line contains whitespace
+    |
+279 |         """Test behavior with multiple quoted phrases (edge case)."""
+280 |         processor = QueryProcessor()
+281 |         
+    | ^^^^^^^^ W293
+282 |         # This is an edge case - typically only one quoted phrase expected
+283 |         result = processor.process('"first phrase" "second phrase"')
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:284:1: W293 [*] Blank line contains whitespace
+    |
+282 |         # This is an edge case - typically only one quoted phrase expected
+283 |         result = processor.process('"first phrase" "second phrase"')
+284 |         
+    | ^^^^^^^^ W293
+285 |         # Should detect as exact type and process first phrase
+286 |         assert result["type"] == "exact"
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:288:1: W293 [*] Blank line contains whitespace
+    |
+286 |         assert result["type"] == "exact"
+287 |         # Behavior may vary, but should handle gracefully
+288 |     
+    | ^^^^ W293
+289 |     def test_malformed_quotes_handling(self):
+290 |         """Test handling of malformed quote queries."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:292:1: W293 [*] Blank line contains whitespace
+    |
+290 |         """Test handling of malformed quote queries."""
+291 |         processor = QueryProcessor()
+292 |         
+    | ^^^^^^^^ W293
+293 |         # Unmatched quote
+294 |         result = processor.process('machine learning"')
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:297:1: W293 [*] Blank line contains whitespace
+    |
+295 |         # Should not be detected as exact phrase
+296 |         assert result["type"] != "exact"
+297 |         
+    | ^^^^^^^^ W293
+298 |         # Empty quotes
+299 |         result = processor.process('""')
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:302:1: W293 [*] Blank line contains whitespace
+    |
+300 |         # Should handle gracefully
+301 |         assert result["type"] == "exact"
+302 |     
+    | ^^^^ W293
+303 |     @pytest.mark.parametrize("query,expected_type", [
+304 |         ("simple query", "keyword"),
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_query_processor.py:305:37: W291 [*] Trailing whitespace
+    |
+303 |     @pytest.mark.parametrize("query,expected_type", [
+304 |         ("simple query", "keyword"),
+305 |         ('"exact phrase"', "exact"), 
+    |                                     ^ W291
+306 |         ("How does this work?", "question"),
+307 |         ("term1 AND term2", "boolean"),
+    |
+    = help: Remove trailing whitespace
+
+tests/test_query_processor.py:316:47: W292 [*] No newline at end of file
+    |
+314 |         processor = QueryProcessor()
+315 |         result = processor.process(query)
+316 |         assert result["type"] == expected_type
+    |                                               ^ W292
+    |
+    = help: Add trailing newline
+
+tests/test_raggy.py:3:1: I001 [*] Import block is un-sorted or un-formatted
+   |
+ 1 |   """Main tests for raggy UniversalRAG functionality."""
+ 2 |
+ 3 | / import pytest
+ 4 | | import tempfile
+ 5 | | import shutil
+ 6 | | from pathlib import Path
+ 7 | | from unittest.mock import patch, MagicMock
+ 8 | | from raggy import (
+ 9 | |     UniversalRAG,
+10 | |     normalize_cosine_distance,
+11 | |     normalize_hybrid_score,
+12 | |     interpret_score
+13 | | )
+   | |_^ I001
+   |
+   = help: Organize imports
+
+tests/test_raggy.py:4:8: F401 [*] `tempfile` imported but unused
+  |
+3 | import pytest
+4 | import tempfile
+  |        ^^^^^^^^ F401
+5 | import shutil
+6 | from pathlib import Path
+  |
+  = help: Remove unused import: `tempfile`
+
+tests/test_raggy.py:5:8: F401 [*] `shutil` imported but unused
+  |
+3 | import pytest
+4 | import tempfile
+5 | import shutil
+  |        ^^^^^^ F401
+6 | from pathlib import Path
+7 | from unittest.mock import patch, MagicMock
+  |
+  = help: Remove unused import: `shutil`
+
+tests/test_raggy.py:32:1: W293 [*] Blank line contains whitespace
+   |
+30 | class TestUniversalRAG:
+31 |     """Test the main UniversalRAG class."""
+32 |     
+   | ^^^^ W293
+33 |     def test_initialization(self, temp_dir, sample_config):
+34 |         """Test UniversalRAG initialization."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:44:1: W293 [*] Blank line contains whitespace
+   |
+42 |                 quiet=True
+43 |             )
+44 |         
+   | ^^^^^^^^ W293
+45 |         assert rag.docs_dir == temp_dir / "docs"
+46 |         assert rag.db_dir == temp_dir / "vectordb"
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:52:1: W293 [*] Blank line contains whitespace
+   |
+50 |         assert rag.quiet is True
+51 |         assert rag.collection_name == "project_docs"
+52 |     
+   | ^^^^ W293
+53 |     def test_initialization_with_defaults(self, sample_config):
+54 |         """Test initialization with default parameters."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:57:1: W293 [*] Blank line contains whitespace
+   |
+55 |         with patch('raggy.load_config', return_value=sample_config):
+56 |             rag = UniversalRAG()
+57 |         
+   | ^^^^^^^^ W293
+58 |         assert rag.docs_dir == Path("./docs")
+59 |         assert rag.db_dir == Path("./vectordb")
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:64:1: W293 [*] Blank line contains whitespace
+   |
+62 |         assert rag.chunk_overlap == 200
+63 |         assert rag.quiet is False
+64 |     
+   | ^^^^ W293
+65 |     def test_lazy_loading_client(self, rag_instance):
+66 |         """Test that database client is initialized during __init__."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:74:1: W293 [*] Blank line contains whitespace
+   |
+72 |         from raggy.core.chromadb_adapter import ChromaDBAdapter
+73 |         assert isinstance(rag_instance._client, ChromaDBAdapter)
+74 |     
+   | ^^^^ W293
+75 |     def test_lazy_loading_embedding_model(self, rag_instance, mock_embedding_model):
+76 |         """Test lazy loading of embedding model."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:87:1: W293 [*] Blank line contains whitespace
+   |
+85 |             assert rag_instance._embedding_model is not None
+86 |             assert model.model_name == "test-model"
+87 |     
+   | ^^^^ W293
+88 |     def test_get_stats_success(self, rag_instance):
+89 |         """Test getting database statistics."""
+   |
+   = help: Remove whitespace from blank line
+
+tests/test_raggy.py:110:1: W293 [*] Blank line contains whitespace
+    |
+108 |             assert stats["sources"]["doc2.md"] == 1
+109 |             assert stats["sources"]["doc3.md"] == 1
+110 |     
+    | ^^^^ W293
+111 |     def test_get_stats_no_database(self, rag_instance):
+112 |         """Test getting stats when database doesn't exist."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:123:1: W293 [*] Blank line contains whitespace
+    |
+121 |             assert "error" in stats
+122 |             assert "Database not found" in stats["error"]
+123 |     
+    | ^^^^ W293
+124 |     def test_config_loading(self, temp_dir):
+125 |         """Test that configuration is loaded correctly."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:138:1: W293 [*] Blank line contains whitespace
+    |
+136 |             assert hasattr(rag, 'config')
+137 |             assert isinstance(rag.config, dict)
+138 |     
+    | ^^^^ W293
+139 |     def test_query_processor_initialization(self, rag_instance):
+140 |         """Test that query processor is initialized with config expansions."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:156:1: W293 [*] Blank line contains whitespace
+    |
+154 |                     assert rag_instance.query_processor.expansions[key] == expected_expansions[key]
+155 |                     break
+156 |     
+    | ^^^^ W293
+157 |     def test_scoring_normalizer_initialization(self, rag_instance):
+158 |         """Test that scoring normalizer is initialized."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:180:1: W293 [*] Blank line contains whitespace
+    |
+178 |         assert normalize_cosine_distance(-0.1) == 1.0  # Clamped to 1
+179 |         assert normalize_cosine_distance(2.1) == 0.0   # Clamped to 0
+180 |     
+    | ^^^^ W293
+181 |     def test_normalize_hybrid_score(self):
+182 |         """Test hybrid score normalization."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:191:1: W293 [*] Blank line contains whitespace
+    |
+189 |         expected = 0.7 * 0.8 + 0.3 * 0.5  # 0.56 + 0.15 = 0.71
+190 |         assert abs(result - expected) < 1e-6
+191 |     
+    | ^^^^ W293
+192 |     def test_normalize_hybrid_score_custom_weight(self):
+193 |         """Test hybrid score with custom semantic weight."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:204:1: W293 [*] Blank line contains whitespace
+    |
+202 |         expected = 0.5 * 0.6 + 0.5 * 1.0  # 0.3 + 0.5 = 0.8
+203 |         assert abs(result - expected) < 1e-6
+204 |     
+    | ^^^^ W293
+205 |     def test_interpret_score(self):
+206 |         """Test score interpretation."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:217:1: W293 [*] Blank line contains whitespace
+    |
+215 |         assert interpret_score(0.3) == "Weak"  # Changed: 0.3 is Weak
+216 |         assert interpret_score(0.1) == "Poor"
+217 |     
+    | ^^^^ W293
+218 |     def test_interpret_score_boundary_conditions(self):
+219 |         """Test score interpretation at boundaries."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:240:1: W293 [*] Blank line contains whitespace
+    |
+238 | class TestRAGIntegration:
+239 |     """Integration tests for RAG functionality."""
+240 |     
+    | ^^^^ W293
+241 |     @pytest.fixture
+242 |     def mock_chromadb_collection(self):
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:248:1: W293 [*] Blank line contains whitespace
+    |
+246 |         mock_collection.add.return_value = None
+247 |         return mock_collection
+248 |     
+    | ^^^^ W293
+249 |     @pytest.fixture 
+250 |     def mock_chromadb_client(self, mock_chromadb_collection):
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:249:20: W291 [*] Trailing whitespace
+    |
+247 |         return mock_collection
+248 |     
+249 |     @pytest.fixture 
+    |                    ^ W291
+250 |     def mock_chromadb_client(self, mock_chromadb_collection):
+251 |         """Mock ChromaDB client for testing."""
+    |
+    = help: Remove trailing whitespace
+
+tests/test_raggy.py:256:1: W293 [*] Blank line contains whitespace
+    |
+254 |         mock_client.get_collection.return_value = mock_chromadb_collection
+255 |         return mock_client
+256 |     
+    | ^^^^ W293
+257 |     def test_build_no_documents(self, rag_instance):
+258 |         """Test build process with no documents."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:268:1: W293 [*] Blank line contains whitespace
+    |
+267 |         # Verify no error was raised
+268 |     
+    | ^^^^ W293
+269 |     def test_build_with_documents(self, rag_instance, sample_documents, mock_embedding_model):
+270 |         """Test build process with documents."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:296:1: W293 [*] Blank line contains whitespace
+    |
+294 |                 files = rag_instance.document_processor.find_documents()
+295 |                 assert len(files) > 0, "No documents found in sample_documents fixture"
+296 |     
+    | ^^^^ W293
+297 |     def test_build_force_rebuild(self, rag_instance):
+298 |         """Test force rebuild functionality."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:303:9: SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+    |
+302 |           # Mock document processor to return no files (to avoid actual processing)
+303 | /         with patch.object(rag_instance.document_processor, 'find_documents', return_value=[]):
+304 | |             # Mock database manager's build_index to check force_rebuild flag
+305 | |             with patch.object(rag_instance.database_manager, 'build_index') as mock_build:
+    | |__________________________________________________________________________________________^ SIM117
+306 |                   rag_instance.build(force_rebuild=True)
+    |
+    = help: Combine `with` statements
+
+tests/test_raggy.py:305:80: F841 Local variable `mock_build` is assigned to but never used
+    |
+303 |         with patch.object(rag_instance.document_processor, 'find_documents', return_value=[]):
+304 |             # Mock database manager's build_index to check force_rebuild flag
+305 |             with patch.object(rag_instance.database_manager, 'build_index') as mock_build:
+    |                                                                                ^^^^^^^^^^ F841
+306 |                 rag_instance.build(force_rebuild=True)
+    |
+    = help: Remove assignment to unused variable `mock_build`
+
+tests/test_raggy.py:310:1: W293 [*] Blank line contains whitespace
+    |
+308 |                 # Verify build was called (even with no documents, the flag should be passed)
+309 |                 # Since no documents found, build_index won't be called, so just verify no error
+310 |     
+    | ^^^^ W293
+311 |     def test_search_no_database(self, rag_instance):
+312 |         """Test search when database doesn't exist."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:318:1: W293 [*] Blank line contains whitespace
+    |
+317 |             assert results == []
+318 |     
+    | ^^^^ W293
+319 |     def test_search_with_results(self, rag_instance):
+320 |         """Test search with mock results."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:349:1: W293 [*] Blank line contains whitespace
+    |
+347 |             assert "final_score" in results[0]
+348 |             assert "score_interpretation" in results[0]
+349 |     
+    | ^^^^ W293
+350 |     def test_search_hybrid_mode(self, rag_instance):
+351 |         """Test search in hybrid mode."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:370:1: W293 [*] Blank line contains whitespace
+    |
+368 |             # BM25 scorer should be initialized
+369 |             # Note: Detailed BM25 testing is in test_bm25.py
+370 |     
+    | ^^^^ W293
+371 |     def test_highlight_matches(self, rag_instance):
+372 |         """Test text highlighting functionality."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:384:1: W293 [*] Blank line contains whitespace
+    |
+382 |         # Should be reasonable length
+383 |         assert len(highlighted) <= 100  # Context + some buffer
+384 |     
+    | ^^^^ W293
+385 |     def test_highlight_matches_no_match(self, rag_instance):
+386 |         """Test text highlighting when no matches found."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:395:1: W293 [*] Blank line contains whitespace
+    |
+393 |         # Should return beginning of text when no match
+394 |         assert len(highlighted) <= 53  # 50 + "..."
+395 |     
+    | ^^^^ W293
+396 |     def test_rerank_results_diversity(self, rag_instance):
+397 |         """Test result reranking for diversity."""
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:414:1: W293 [*] Blank line contains whitespace
+    |
+412 |         # Should have good source diversity in top results
+413 |         assert len(unique_sources) >= 2
+414 |     
+    | ^^^^ W293
+415 |     @patch('builtins.input', side_effect=['test query', 'q'])
+416 |     def test_interactive_search(self, mock_input, rag_instance, capsys):
+    |
+    = help: Remove whitespace from blank line
+
+tests/test_raggy.py:426:45: W292 [*] No newline at end of file
+    |
+424 |             assert "Interactive Search Mode" in captured.out
+425 |             assert "No results found" in captured.out  # Empty results
+426 |             assert "Goodbye" in captured.out
+    |                                             ^ W292
+    |
+    = help: Add trailing newline
+
+Found 250 errors.
+[*] 225 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

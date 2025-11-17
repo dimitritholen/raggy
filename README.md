@@ -260,7 +260,7 @@ python raggy_cli.py forget --archive --older-than 90d
 - Python 3.8+
 - ChromaDB 0.4.0+ (included by default)
 - sentence-transformers 2.2.0+ (included by default)
-- PyPDF2 3.0.0+ (for PDF support)
+- pypdf 6.2.0+ (for PDF support)
 - python-docx 1.0.0+ (for DOCX support)
 
 ### Optional Cloud Database Support

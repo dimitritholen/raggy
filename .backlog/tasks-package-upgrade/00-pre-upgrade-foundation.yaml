@@ -1,0 +1,167 @@
+# Phase 0: Pre-Upgrade Foundation
+# Preparation tasks before beginning package upgrades
+# Estimated Time: 1-2 hours
+# Priority: CRITICAL
+# Blocking: Yes (must complete before any upgrades)
+
+phase:
+  number: 0
+  name: "Pre-Upgrade Foundation"
+  description: "Establish baseline, create backups, and prepare upgrade environment"
+  estimated_hours: "1-2"
+  risk_level: "LOW"
+  blocking: true
+
+tasks:
+  - id: "PRE-001"
+    name: "Create git branch for package upgrades"
+    description: "Create feature branch to isolate upgrade work from main"
+    estimated_minutes: 5
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "git checkout -b feature/package-upgrades"
+      - "git push -u origin feature/package-upgrades"
+    validation:
+      - "git branch --show-current | grep 'feature/package-upgrades'"
+
+  - id: "PRE-002"
+    name: "Document current package versions baseline"
+    description: "Capture exact current versions of all installed packages"
+    estimated_minutes: 10
+    priority: "HIGH"
+    blocking: false
+    commands:
+      - "pip freeze > .backlog/tasks-package-upgrade/baseline-packages.txt"
+    validation:
+      - "test -f .backlog/tasks-package-upgrade/baseline-packages.txt"
+    outputs:
+      - ".backlog/tasks-package-upgrade/baseline-packages.txt"
+
+  - id: "PRE-003"
+    name: "Run full test suite and capture baseline"
+    description: "Execute all tests and save results for comparison after upgrades"
+    estimated_minutes: 15
+    priority: "HIGH"
+    blocking: true
+    commands:
+      - "pytest --verbose --tb=short > .backlog/tasks-package-upgrade/baseline-test-results.txt 2>&1 || true"
+    validation:
+      - "test -f .backlog/tasks-package-upgrade/baseline-test-results.txt"
+    outputs:
+      - ".backlog/tasks-package-upgrade/baseline-test-results.txt"
+    notes:
+      - "|| true allows command to succeed even if tests fail"
+      - "Current test suite has known failures - we're capturing current state"
+
+  - id: "PRE-004"
+    name: "Run code quality checks and capture baseline"
+    description: "Execute ruff, mypy, bandit, safety and save results"
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "ruff check . > .backlog/tasks-package-upgrade/baseline-ruff.txt 2>&1 || true"
+      - "mypy raggy.py > .backlog/tasks-package-upgrade/baseline-mypy.txt 2>&1 || true"
+      - "bandit -r . -ll > .backlog/tasks-package-upgrade/baseline-bandit.txt 2>&1 || true"
+    validation:
+      - "test -f .backlog/tasks-package-upgrade/baseline-ruff.txt"
+      - "test -f .backlog/tasks-package-upgrade/baseline-mypy.txt"
+      - "test -f .backlog/tasks-package-upgrade/baseline-bandit.txt"
+    outputs:
+      - ".backlog/tasks-package-upgrade/baseline-ruff.txt"
+      - ".backlog/tasks-package-upgrade/baseline-mypy.txt"
+      - ".backlog/tasks-package-upgrade/baseline-bandit.txt"
+
+  - id: "PRE-005"
+    name: "Backup ChromaDB database"
+    description: "Create backup of existing ChromaDB data before irreversible migration"
+    estimated_minutes: 15
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "mkdir -p .backlog/chromadb-backup"
+      - "cp -r .raggy/chroma .backlog/chromadb-backup/ 2>/dev/null || echo 'No ChromaDB data found (OK for fresh install)'"
+    validation:
+      - "test -d .backlog/chromadb-backup"
+    notes:
+      - "ChromaDB 0.4→1.3 migration is IRREVERSIBLE"
+      - "This backup allows rollback if migration fails"
+      - "If no ChromaDB data exists yet, this is expected"
+
+  - id: "PRE-006"
+    name: "Verify Python version compatibility check"
+    description: "Confirm current Python version and document upgrade requirement"
+    estimated_minutes: 5
+    priority: "CRITICAL"
+    blocking: true
+    commands:
+      - "python --version"
+      - "python -c 'import sys; print(f\"Current: {sys.version_info.major}.{sys.version_info.minor}\"); print(f\"Required: 3.10+\"); sys.exit(0 if sys.version_info >= (3, 10) else 1)' || echo 'NEEDS UPGRADE'"
+    validation:
+      - "python --version"
+    notes:
+      - "If Python < 3.10, user MUST upgrade Python before proceeding"
+      - "pytest 9.x requires Python >=3.10"
+
+  - id: "PRE-007"
+    name: "Create upgrade rollback documentation"
+    description: "Document rollback procedure in case upgrades fail"
+    estimated_minutes: 15
+    priority: "HIGH"
+    blocking: false
+    file_path: ".backlog/tasks-package-upgrade/ROLLBACK.md"
+    content: |
+      # Package Upgrade Rollback Procedure
+
+      ## If Upgrade Fails
+
+      ### 1. Rollback Git Branch
+      ```bash
+      git checkout main
+      git branch -D feature/package-upgrades
+      ```
+
+      ### 2. Restore Package Versions
+      ```bash
+      pip install -r .backlog/tasks-package-upgrade/baseline-packages.txt
+      ```
+
+      ### 3. Restore ChromaDB Database
+      ```bash
+      rm -rf .raggy/chroma
+      cp -r .backlog/chromadb-backup/chroma .raggy/
+      ```
+
+      ### 4. Verify Rollback Success
+      ```bash
+      pytest --verbose --tb=short
+      ruff check .
+      mypy raggy.py
+      ```
+
+      ## Baseline Files
+      - `baseline-packages.txt` - Exact package versions before upgrade
+      - `baseline-test-results.txt` - Test results before upgrade
+      - `baseline-ruff.txt` - Ruff linting results before upgrade
+      - `baseline-mypy.txt` - Mypy type checking results before upgrade
+      - `baseline-bandit.txt` - Bandit security scan before upgrade
+      - `chromadb-backup/` - ChromaDB database backup
+
+      ## Recovery Time
+      Estimated: 5-10 minutes for complete rollback
+    validation:
+      - "test -f .backlog/tasks-package-upgrade/ROLLBACK.md"
+
+completion_criteria:
+  - "Feature branch created and pushed"
+  - "All baseline files generated"
+  - "ChromaDB backup created (or confirmed no data exists)"
+  - "Python version compatibility verified"
+  - "Rollback documentation created"
+
+next_phase:
+  number: 1
+  name: "Python Version Upgrade"
+  file: "01-python-version-upgrade.yaml"
+  blocking_requirement: "PRE-006 must confirm Python >=3.10 or user must upgrade Python"

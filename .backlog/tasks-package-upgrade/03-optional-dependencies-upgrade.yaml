@@ -1,0 +1,576 @@
+# Phase 3: Optional Dependencies Upgrade
+# Upgrade optional dependencies (features not currently used but available for users)
+# Estimated Time: 2-4 hours
+# Priority: MEDIUM
+# Blocking: No (optional features)
+
+phase:
+  number: 3
+  name: "Optional Dependencies Upgrade"
+  description: "Upgrade optional dependencies: PyYAML, python-magic, pinecone-client, supabase, openai"
+  estimated_hours: "2-4"
+  risk_level: "LOW"
+  blocking: false
+  prerequisite_phase: 2
+
+context:
+  implementation_scanned:
+    - "Optional dependencies declared in pyproject.toml lines 32-57"
+    - "NO usage found in raggy.py or raggy/ codebase (truly optional)"
+    - "These are for user-facing features, not core Raggy functionality"
+
+  critical_notes:
+    - "All optional dependencies are NOT currently imported or used"
+    - "Safe to upgrade - no breaking changes affect current code"
+    - "Testing limited to installation verification only"
+    - "Users who install extras will get upgraded versions"
+
+  current_versions:
+    - PyYAML: ">=6.0" (already recent)
+    - python-magic-bin: ">=0.4.14" (Windows-specific)
+    - python-magic: unversioned (Unix-specific)
+    - pinecone-client: ">=2.0.0" (needs upgrade)
+    - supabase: ">=2.0.0" (needs upgrade)
+    - openai: ">=1.0.0" (needs upgrade)
+
+tasks:
+  # ========================================================================
+  # TASK 1: PyYAML Upgrade (Already Recent, Verify Only)
+  # ========================================================================
+
+  - id: "OPT-001"
+    name: "Verify PyYAML 6.0+ compatibility"
+    description: |
+      Verify PyYAML 6.0 is the current stable version and compatible with Python 3.10+
+
+      Context from code scan:
+      - Current constraint: PyYAML>=6.0 (line 33 in pyproject.toml)
+      - NOT used in codebase (no imports found)
+      - Optional extra: [yaml]
+
+      Verification:
+      1. Check latest PyYAML version on PyPI
+      2. Verify Python 3.10+ compatibility
+      3. No changes needed (already at 6.0+)
+
+      Expected outcome:
+      - PyYAML 6.0 is already recent (released 2021, still current in 2025)
+      - No update needed
+      - Users installing [yaml] extra get 6.0+
+    estimated_minutes: 5
+    priority: "LOW"
+    blocking: false
+    commands:
+      - "pip index versions pyyaml 2>/dev/null || pip search pyyaml 2>/dev/null || echo 'PyYAML 6.0 is current stable'"
+    validation:
+      - "grep 'PyYAML>=6.0' pyproject.toml"
+    acceptance_criteria:
+      - "INFO: PyYAML 6.0+ is current stable version (no update needed)"
+      - "INFO: Compatible with Python 3.10+"
+      - "INFO: Installation test deferred to OPT-006"
+
+  # ========================================================================
+  # TASK 2: python-magic Upgrade (Platform-Specific)
+  # ========================================================================
+
+  - id: "OPT-002"
+    name: "Research python-magic and python-magic-bin latest versions"
+    description: |
+      Research current versions for python-magic (Unix) and python-magic-bin (Windows)
+
+      Context from code scan:
+      - Current: python-magic-bin>=0.4.14 (Windows, line 34)
+      - Current: python-magic (Unix, line 35, no version constraint)
+      - NOT used in codebase (no imports found)
+      - Optional extras: [magic-win] and [magic-unix]
+
+      Research goals:
+      1. Find latest python-magic-bin version
+      2. Find recommended python-magic version for Unix
+      3. Check Python 3.10+ compatibility
+      4. Determine if version updates are available
+
+      Platform differences:
+      - python-magic-bin: Bundles libmagic (Windows convenience)
+      - python-magic: Requires system libmagic (Unix standard)
+      - Both have same API, different packaging
+    estimated_minutes: 10
+    priority: "LOW"
+    blocking: false
+    commands:
+      - "pip index versions python-magic-bin 2>/dev/null | head -5 || echo 'Check PyPI manually'"
+      - "pip index versions python-magic 2>/dev/null | head -5 || echo 'Check PyPI manually'"
+    validation:
+      - "echo 'Research complete - findings recorded for OPT-003'"
+    acceptance_criteria:
+      - "INFO: Latest python-magic-bin version identified"
+      - "INFO: Latest python-magic version identified"
+      - "INFO: Python 3.10+ compatibility confirmed"
+
+  - id: "OPT-003"
+    name: "Update python-magic versions in pyproject.toml"
+    description: |
+      Update python-magic version constraints based on research
+
+      Context from code scan:
+      - Line 34: python-magic-bin>=0.4.14 (Windows)
+      - Line 35: python-magic (Unix, currently no version)
+
+      Update strategy:
+      - python-magic-bin: Update to latest stable (likely 0.4.x)
+      - python-magic: Add version constraint for consistency (>=0.4.x)
+
+      Expected versions (verify with OPT-002 research):
+      - python-magic-bin: 0.4.14+ is current (no change likely)
+      - python-magic: Add >=0.4.14 for consistency
+
+      NOTE: These are optional extras - not required for core Raggy
+    estimated_minutes: 5
+    priority: "LOW"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 35
+        from: '"python-magic"'
+        to: '"python-magic>=0.4.14"'
+        note: "Add version constraint for consistency with Windows version"
+    validation:
+      - "grep 'python-magic>=0.4.14' pyproject.toml | wc -l | grep -q 2"
+    acceptance_criteria:
+      - "BLOCKING: python-magic has version constraint (>=0.4.14)"
+      - "INFO: Both platform variants have consistent versioning"
+    dependencies: ["OPT-002"]
+
+  # ========================================================================
+  # TASK 3: pinecone-client Upgrade (Cloud Vector Store)
+  # ========================================================================
+
+  - id: "OPT-004"
+    name: "Research latest pinecone-client version and breaking changes"
+    description: |
+      Research pinecone-client upgrade path from 2.0.x to latest
+
+      Context from code scan:
+      - Current: pinecone-client>=2.0.0 (line 38)
+      - NOT used in codebase (optional cloud vector store)
+      - Optional extras: [pinecone], [cloud-stores], [cloud], [all]
+
+      Research goals:
+      1. Find latest pinecone-client version (likely 4.x or 5.x in 2025)
+      2. Identify breaking changes from 2.x → latest
+      3. Check Python 3.10+ compatibility
+      4. Determine migration complexity
+
+      Expected findings:
+      - Pinecone v3.x: Introduced new client architecture
+      - Pinecone v4.x+: Enhanced API, possible breaking changes
+      - Since NOT used yet, can adopt latest directly
+    estimated_minutes: 15
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "pip index versions pinecone-client 2>/dev/null | head -10 || echo 'Check PyPI/Pinecone docs'"
+    validation:
+      - "echo 'Research complete - findings for OPT-005'"
+    acceptance_criteria:
+      - "INFO: Latest pinecone-client version identified"
+      - "INFO: Breaking changes from 2.x documented"
+      - "INFO: Recommended version constraint determined"
+
+  - id: "OPT-005"
+    name: "Update pinecone-client to latest stable version"
+    description: |
+      Update pinecone-client version constraint based on research
+
+      Context from code scan:
+      - Current: pinecone-client>=2.0.0 (lines 38, 40, 47, 51)
+      - Used in 4 places: [pinecone], [cloud-stores], [cloud], [all]
+      - NOT imported in code (optional feature)
+
+      Update strategy:
+      - Research from OPT-004 determines target version
+      - Update all 4 occurrences consistently
+      - Likely target: pinecone-client>=4.0.0 (verify with research)
+
+      Changes required (example - verify actual version):
+      - Line 38: [pinecone] extra
+      - Line 40: [cloud-stores] extra
+      - Line 47: [cloud] extra
+      - Line 51: [all] extra (via [all])
+
+      NOTE: No code impact - users who install [pinecone] get latest
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 38
+        from: '"pinecone-client>=2.0.0"'
+        to: '"pinecone-client>=4.0.0"'
+        note: "Update to latest stable (verify actual version with OPT-004)"
+      - line: 40
+        from: '"pinecone-client>=2.0.0"'
+        to: '"pinecone-client>=4.0.0"'
+        note: "cloud-stores extra"
+      - line: 47
+        from: '"pinecone-client>=2.0.0"'
+        to: '"pinecone-client>=4.0.0"'
+        note: "cloud extra"
+      - line: 54
+        from: '"pinecone-client>=2.0.0"'
+        to: '"pinecone-client>=4.0.0"'
+        note: "all extra (verify line number)"
+    validation:
+      - "grep 'pinecone-client>=4.0.0' pyproject.toml | wc -l | grep -q 4"
+    acceptance_criteria:
+      - "BLOCKING: All 4 pinecone-client constraints updated consistently"
+      - "INFO: Version matches OPT-004 research findings"
+      - "INFO: No code changes needed (not currently used)"
+    dependencies: ["OPT-004"]
+
+  # ========================================================================
+  # TASK 4: supabase Upgrade (Cloud Vector Store)
+  # ========================================================================
+
+  - id: "OPT-006"
+    name: "Research latest supabase-py version and breaking changes"
+    description: |
+      Research supabase-py upgrade path from 2.0.x to latest
+
+      Context from code scan:
+      - Current: supabase>=2.0.0 (line 39)
+      - NOT used in codebase (optional cloud vector store)
+      - Optional extras: [supabase], [cloud-stores], [cloud], [all]
+
+      Research goals:
+      1. Find latest supabase-py version (supabase package on PyPI)
+      2. Identify breaking changes from 2.x → latest
+      3. Check Python 3.10+ compatibility
+      4. Determine migration complexity
+
+      Expected findings:
+      - supabase-py is stable at 2.x (verify if 3.x exists)
+      - Python 3.10+ compatibility
+      - Since NOT used yet, can adopt latest directly
+    estimated_minutes: 15
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "pip index versions supabase 2>/dev/null | head -10 || echo 'Check PyPI/Supabase docs'"
+    validation:
+      - "echo 'Research complete - findings for OPT-007'"
+    acceptance_criteria:
+      - "INFO: Latest supabase version identified"
+      - "INFO: Breaking changes from 2.x documented (if any)"
+      - "INFO: Recommended version constraint determined"
+
+  - id: "OPT-007"
+    name: "Update supabase to latest stable version"
+    description: |
+      Update supabase version constraint based on research
+
+      Context from code scan:
+      - Current: supabase>=2.0.0 (lines 39, 40, 47, 51)
+      - Used in 4 places: [supabase], [cloud-stores], [cloud], [all]
+      - NOT imported in code (optional feature)
+
+      Update strategy:
+      - Research from OPT-006 determines target version
+      - Update all 4 occurrences consistently
+      - Likely target: supabase>=2.10.0 or 3.0.0 (verify with research)
+
+      Changes required (example - verify actual version):
+      - Line 39: [supabase] extra
+      - Line 40: [cloud-stores] extra
+      - Line 47: [cloud] extra
+      - Line 51: [all] extra (via [all])
+
+      NOTE: No code impact - users who install [supabase] get latest
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 39
+        from: '"supabase>=2.0.0"'
+        to: '"supabase>=2.10.0"'
+        note: "Update to latest stable (verify actual version with OPT-006)"
+      - line: 40
+        from: '"supabase>=2.0.0"'
+        to: '"supabase>=2.10.0"'
+        note: "cloud-stores extra"
+      - line: 47
+        from: '"supabase>=2.0.0"'
+        to: '"supabase>=2.10.0"'
+        note: "cloud extra"
+      - line: 55
+        from: '"supabase>=2.0.0"'
+        to: '"supabase>=2.10.0"'
+        note: "all extra (verify line number)"
+    validation:
+      - "grep 'supabase>=' pyproject.toml | wc -l | grep -q 4"
+    acceptance_criteria:
+      - "BLOCKING: All 4 supabase constraints updated consistently"
+      - "INFO: Version matches OPT-006 research findings"
+      - "INFO: No code changes needed (not currently used)"
+    dependencies: ["OPT-006"]
+
+  # ========================================================================
+  # TASK 5: openai Upgrade (Cloud Embedding Provider)
+  # ========================================================================
+
+  - id: "OPT-008"
+    name: "Research latest openai package version and breaking changes"
+    description: |
+      Research openai package upgrade path from 1.0.x to latest
+
+      Context from code scan:
+      - Current: openai>=1.0.0 (line 43)
+      - NOT used in codebase (optional cloud embedding provider)
+      - Optional extras: [openai], [cloud-embeddings], [cloud], [all]
+
+      Research goals:
+      1. Find latest openai package version (likely 1.x in 2025)
+      2. Identify breaking changes from 1.0 → latest
+      3. Check Python 3.10+ compatibility
+      4. Determine migration complexity
+
+      Expected findings:
+      - openai v1.x: Stable, backwards compatible within major version
+      - Python 3.10+ compatibility
+      - Since NOT used yet, can adopt latest directly
+    estimated_minutes: 15
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "pip index versions openai 2>/dev/null | head -10 || echo 'Check PyPI/OpenAI docs'"
+    validation:
+      - "echo 'Research complete - findings for OPT-009'"
+    acceptance_criteria:
+      - "INFO: Latest openai version identified"
+      - "INFO: Breaking changes from 1.0 documented (if any)"
+      - "INFO: Recommended version constraint determined"
+
+  - id: "OPT-009"
+    name: "Update openai to latest stable version"
+    description: |
+      Update openai version constraint based on research
+
+      Context from code scan:
+      - Current: openai>=1.0.0 (lines 43, 44, 47, 51)
+      - Used in 4 places: [openai], [cloud-embeddings], [cloud], [all]
+      - NOT imported in code (optional feature)
+
+      Update strategy:
+      - Research from OPT-008 determines target version
+      - Update all 4 occurrences consistently
+      - Likely target: openai>=1.50.0 (verify with research - 2025 latest)
+
+      Changes required (example - verify actual version):
+      - Line 43: [openai] extra
+      - Line 44: [cloud-embeddings] extra
+      - Line 47: [cloud] extra
+      - Line 51: [all] extra (via [all])
+
+      NOTE: No code impact - users who install [openai] get latest
+    estimated_minutes: 10
+    priority: "MEDIUM"
+    blocking: false
+    file_path: "pyproject.toml"
+    changes:
+      - line: 43
+        from: '"openai>=1.0.0"'
+        to: '"openai>=1.50.0"'
+        note: "Update to latest stable (verify actual version with OPT-008)"
+      - line: 44
+        from: '"openai>=1.0.0"'
+        to: '"openai>=1.50.0"'
+        note: "cloud-embeddings extra"
+      - line: 47
+        from: '"openai>=1.0.0"'
+        to: '"openai>=1.50.0"'
+        note: "cloud extra"
+      - line: 56
+        from: '"openai>=1.0.0"'
+        to: '"openai>=1.50.0"'
+        note: "all extra (verify line number)"
+    validation:
+      - "grep 'openai>=1\\.5' pyproject.toml | wc -l | grep -q 4"
+    acceptance_criteria:
+      - "BLOCKING: All 4 openai constraints updated consistently"
+      - "INFO: Version matches OPT-008 research findings"
+      - "INFO: No code changes needed (not currently used)"
+    dependencies: ["OPT-008"]
+
+  # ========================================================================
+  # TASK 6: Installation Verification (Comprehensive Test)
+  # ========================================================================
+
+  - id: "OPT-010"
+    name: "Test installation of all optional extras"
+    description: |
+      Verify all optional dependency extras install correctly
+
+      Context from code scan:
+      - Optional extras defined: yaml, magic-win, magic-unix, pinecone, supabase, cloud-stores, openai, cloud-embeddings, cloud, all
+      - None currently used in code (safe to test without impacting core)
+
+      Installation tests:
+      1. Create temporary virtual environment
+      2. Install raggy with each extra separately
+      3. Verify package versions match constraints
+      4. Check for dependency conflicts
+      5. Verify imports work (even if not used in code)
+
+      Test commands (in temp venv):
+      - pip install -e ".[yaml]"
+      - pip install -e ".[magic-unix]" (Unix only)
+      - pip install -e ".[magic-win]" (Windows only)
+      - pip install -e ".[pinecone]"
+      - pip install -e ".[supabase]"
+      - pip install -e ".[openai]"
+      - pip install -e ".[cloud]"
+      - pip install -e ".[all]"
+
+      Expected outcome:
+      - All extras install without errors
+      - No dependency conflicts
+      - Version constraints satisfied
+    estimated_minutes: 30
+    priority: "MEDIUM"
+    blocking: false
+    commands:
+      - "python -m venv /tmp/raggy-opt-test"
+      - "source /tmp/raggy-opt-test/bin/activate && pip install -e '.[yaml]' && pip list | grep -i pyyaml && deactivate"
+      - "source /tmp/raggy-opt-test/bin/activate && pip install -e '.[pinecone]' && pip list | grep -i pinecone && deactivate"
+      - "source /tmp/raggy-opt-test/bin/activate && pip install -e '.[supabase]' && pip list | grep -i supabase && deactivate"
+      - "source /tmp/raggy-opt-test/bin/activate && pip install -e '.[openai]' && pip list | grep -i openai && deactivate"
+      - "source /tmp/raggy-opt-test/bin/activate && pip install -e '.[all]' && pip list && deactivate"
+      - "rm -rf /tmp/raggy-opt-test"
+    validation:
+      - "echo 'All optional extras tested successfully'"
+    acceptance_criteria:
+      - "BLOCKING: PyYAML>=6.0 installs with [yaml]"
+      - "BLOCKING: pinecone-client installs with [pinecone]"
+      - "BLOCKING: supabase installs with [supabase]"
+      - "BLOCKING: openai installs with [openai]"
+      - "BLOCKING: All dependencies install with [all]"
+      - "BLOCKING: No dependency conflicts detected"
+      - "INFO: python-magic platform-specific extras skipped (platform-dependent)"
+    dependencies: ["OPT-003", "OPT-005", "OPT-007", "OPT-009"]
+
+  # ========================================================================
+  # PHASE COMPLETION: Documentation and Commit
+  # ========================================================================
+
+  - id: "OPT-011"
+    name: "Update CHANGELOG with optional dependency upgrades"
+    description: |
+      Document optional dependency upgrades in CHANGELOG.md
+
+      Changelog entries:
+      1. PyYAML 6.0 (no change - already current)
+      2. python-magic version constraint added
+      3. pinecone-client 2.x → 4.x (research-dependent)
+      4. supabase 2.0 → 2.10+ (research-dependent)
+      5. openai 1.0 → 1.50+ (research-dependent)
+
+      Format:
+      ```markdown
+      ## [Unreleased]
+
+      ### Changed
+      - Updated optional dependency: pinecone-client from 2.0.0 to 4.0.0
+      - Updated optional dependency: supabase from 2.0.0 to 2.10.0
+      - Updated optional dependency: openai from 1.0.0 to 1.50.0
+      - Added version constraint to python-magic (>=0.4.14) for consistency
+
+      ### Notes
+      - Optional dependencies are NOT used in core Raggy (users opt-in via extras)
+      - No breaking changes affect existing code
+      - Users installing [cloud], [pinecone], [supabase], or [openai] extras will get upgraded versions
+      ```
+
+      Include:
+      - Note that these are optional (not required)
+      - Actual versions from research tasks
+      - No breaking changes (not used in code)
+    estimated_minutes: 15
+    priority: "HIGH"
+    blocking: false
+    file_path: "CHANGELOG.md"
+    validation:
+      - "grep -i 'optional' CHANGELOG.md"
+      - "grep -i 'pinecone' CHANGELOG.md"
+      - "grep -i 'supabase' CHANGELOG.md"
+      - "grep -i 'openai' CHANGELOG.md"
+    acceptance_criteria:
+      - "BLOCKING: All 5 optional dependency changes documented"
+      - "INFO: Notes clarify these are optional features"
+      - "INFO: Actual versions from research included"
+      - "INFO: No breaking changes mentioned (not used in code)"
+    dependencies: ["OPT-010"]
+
+# ============================================================================
+# PHASE 3 SUMMARY
+# ============================================================================
+
+summary:
+  total_tasks: 11
+  estimated_time: "2-4 hours"
+  critical_tasks: 0
+  high_priority_tasks: 1
+  medium_priority_tasks: 6
+  low_priority_tasks: 4
+
+  dependencies_upgraded:
+    - name: "PyYAML"
+      version_change: "6.0 → 6.0 (no change)"
+      breaking: false
+      reason: "Already current stable version"
+      impact: "None - optional feature"
+
+    - name: "python-magic"
+      version_change: "unversioned → >=0.4.14"
+      breaking: false
+      reason: "Add version constraint for consistency"
+      impact: "None - optional feature"
+
+    - name: "pinecone-client"
+      version_change: "2.0.0 → 4.0.0 (estimated)"
+      breaking: true
+      reason: "Major version upgrade with API changes"
+      impact: "None - NOT used in code, users opt-in via [pinecone] extra"
+
+    - name: "supabase"
+      version_change: "2.0.0 → 2.10.0 (estimated)"
+      breaking: false
+      reason: "Minor version update"
+      impact: "None - NOT used in code, users opt-in via [supabase] extra"
+
+    - name: "openai"
+      version_change: "1.0.0 → 1.50.0 (estimated)"
+      breaking: false
+      reason: "Minor version update within stable 1.x"
+      impact: "None - NOT used in code, users opt-in via [openai] extra"
+
+  critical_warnings:
+    - "ℹ️  All optional dependencies are NOT used in Raggy codebase"
+    - "ℹ️  Changes only affect users who install optional extras"
+    - "ℹ️  No core functionality impacted by these upgrades"
+    - "ℹ️  Research tasks determine actual target versions"
+
+  rollback_plan:
+    - step: "If optional dependency upgrade causes issues:"
+      actions:
+        - "Revert pyproject.toml changes (git checkout pyproject.toml)"
+        - "No code changes to revert (optional deps not used)"
+        - "Users can pin older versions if needed"
+
+  verification_checklist:
+    - "✓ Research completed for all cloud dependencies"
+    - "✓ Version constraints updated consistently (4 places each)"
+    - "✓ Installation tests pass for all extras"
+    - "✓ No dependency conflicts detected"
+    - "✓ CHANGELOG updated with optional dependency notes"
+    - "✓ No code changes required (not used in codebase)"
