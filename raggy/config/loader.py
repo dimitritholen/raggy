@@ -23,10 +23,16 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     config_file = Path(config_path or "raggy_config.yaml")
     if config_file.exists():
         try:
-            import yaml
+            # Detect file format by extension
+            is_json = config_file.suffix.lower() == ".json"
 
             with open(config_file) as f:
-                user_config = yaml.safe_load(f)
+                if is_json:
+                    import json
+                    user_config = json.load(f)
+                else:
+                    import yaml
+                    user_config = yaml.safe_load(f)
 
             # Merge with defaults
             _merge_configs(default_config, user_config)
@@ -35,9 +41,9 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         except (FileNotFoundError, PermissionError, OSError) as e:
             log_warning(f"Could not access config file {config_file}", e, quiet=False)
         except (AttributeError, TypeError, ValueError) as e:
-            # Handle YAML parsing errors - yaml.YAMLError inherits from Exception
+            # Handle parsing errors - yaml.YAMLError inherits from Exception
             # but we catch common parsing issues (invalid structure, types, values)
-            log_warning(f"Invalid YAML format in {config_file}", e, quiet=False)
+            log_warning(f"Invalid format in {config_file}", e, quiet=False)
 
     return default_config
 

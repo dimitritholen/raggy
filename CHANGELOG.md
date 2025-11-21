@@ -34,6 +34,29 @@ All notable changes to the raggy project will be documented in this file.
   - Requires Python >=3.9 (satisfied by Python 3.10 requirement)
   - No breaking API changes
 
+### Optional Dependencies (User Opt-In)
+- Updated optional dependency: pinecone-client from 2.0.0 to 6.0.0
+  - Optional feature for cloud vector storage ([pinecone], [cloud-stores], [cloud], [all] extras)
+  - Major version upgrade (2.x → 6.x) with enhanced API
+  - NOT used in Raggy core - only affects users who install [pinecone] extra
+
+- Updated optional dependency: supabase from 2.0.0 to 2.24.0
+  - Optional feature for cloud vector storage ([supabase], [cloud-stores], [cloud], [all] extras)
+  - Minor version update within stable 2.x series (backwards compatible)
+  - NOT used in Raggy core - only affects users who install [supabase] extra
+
+- Updated optional dependency: openai from 1.0.0 to 2.8.0
+  - Optional feature for cloud embeddings ([openai], [cloud-embeddings], [cloud], [all] extras)
+  - Major version upgrade (1.x → 2.x) with backwards-compatible API
+  - Used in raggy/embeddings/openai_provider.py (v1.x API maintained in v2.x)
+
+- Added version constraint to python-magic (>=0.4.14)
+  - Optional feature for file type detection ([magic-unix], [all] extras)
+  - Consistency improvement (matches python-magic-bin version)
+  - Platform-specific: python-magic (Unix), python-magic-bin (Windows)
+
+**Note**: All optional dependency upgrades do NOT affect core Raggy functionality. Users must explicitly install extras (e.g., `pip install raggy[cloud]`) to use these features. No breaking changes impact existing code.
+
 ### Infrastructure
 - Updated pyproject.toml Python version constraints
 - Updated ruff target version to py310
